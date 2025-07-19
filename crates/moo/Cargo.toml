@@ -1,0 +1,28 @@
+[package]
+name = "moo-rs"
+description = "A library crate for reading and writing MOO (Machine Opcode Operation) files."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+name = "moo"
+path = "src/lib.rs"
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+binrw = { workspace = true }
+sha1 = "0.11.0-pre.5"
+
+# Optional dependencies
+ard808x_client = { git = "https://github.com/dbalsom/arduinox86", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+log = "0.4.21"
+thiserror = "2.0"
+
+[features]
+default = ["serde"]
+use_client = ["ard808x_client"]
+use_serde = ["serde"]

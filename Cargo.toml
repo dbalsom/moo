@@ -1,0 +1,25 @@
+[workspace]
+members = [
+    "crates/moo"
+]
+resolver = "2"
+default-members = ["crates/moo"]
+
+[workspace.package]
+version = "0.3.0"
+edition = "2021"
+authors = ["Daniel Balsom"]
+license = "MIT"
+repository = "https://github.com/dbalsom/moo"
+
+[workspace.dependencies]
+binrw = "0.15"
+serde = { version = "1.0", features = ["derive"] }
+thiserror = "2.0"
+
+[workspace.dependencies.iced-x86]
+version = "1.21"
+default-features = false
+# See below for all features
+features = ["std", "encoder", "decoder", "nasm", "instr_info", "serde"]
+
