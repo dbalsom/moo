@@ -3,7 +3,7 @@ use binrw::binrw;
 use std::fmt::Display;
 
 #[cfg(feature = "use_client")]
-use ard808x_client::RemoteCpuRegistersV1;
+use arduinox86_client::RemoteCpuRegistersV1;
 
 pub struct MooRegisters1Init {
     pub ax: u16,

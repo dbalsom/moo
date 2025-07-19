@@ -17,12 +17,12 @@ binrw = { workspace = true }
 sha1 = "0.11.0-pre.5"
 
 # Optional dependencies
-ard808x_client = { git = "https://github.com/dbalsom/arduinox86", optional = true }
+arduinox86_client = { package = "arduinox86_client", git = "https://github.com/dbalsom/arduinoX86", branch = "80286", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 log = "0.4.21"
 thiserror = "2.0"
 
 [features]
 default = ["serde"]
-use_client = ["ard808x_client"]
+use_client = ["arduinox86_client"]
 use_serde = ["serde"]

@@ -15,8 +15,8 @@ pub use registers::*;
 pub use state::*;
 pub use test::*;
 
-#[cfg(feature = "ard808x_client")]
-use ard808x_client::ServerCpuType;
+#[cfg(feature = "arduinox86_client")]
+use arduinox86_client::ServerCpuType;
 
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
@@ -83,14 +83,14 @@ impl MooCpuType {
     }
 }
 
-#[cfg(feature = "ard808x_client")]
+#[cfg(feature = "arduinox86_client")]
 impl From<MooCpuType> for ServerCpuType {
     fn from(cpu_type: MooCpuType) -> Self {
         ServerCpuType::from(&cpu_type)
     }
 }
 
-#[cfg(feature = "ard808x_client")]
+#[cfg(feature = "arduinox86_client")]
 impl From<&MooCpuType> for ServerCpuType {
     fn from(cpu_type: &MooCpuType) -> Self {
         match cpu_type {
