@@ -378,29 +378,6 @@ impl MooRegisters1 {
     }
 }
 
-#[cfg(feature = "use_arduinox86_client")]
-impl From<RemoteCpuRegistersV1> for MooRegisters1 {
-    fn from(remote: RemoteCpuRegistersV1) -> Self {
-        Self {
-            reg_mask: MooRegisters1::ALL_SET, // All registers set
-            ax: remote.ax,
-            bx: remote.bx,
-            cx: remote.cx,
-            dx: remote.dx,
-            cs: remote.cs,
-            ss: remote.ss,
-            ds: remote.ds,
-            es: remote.es,
-            sp: remote.sp,
-            bp: remote.bp,
-            si: remote.si,
-            di: remote.di,
-            ip: remote.ip,
-            flags: remote.flags,
-        }
-    }
-}
-
 pub struct MooRegisters1Printer<'a> {
     pub regs: &'a MooRegisters1,
     pub cpu_type: MooCpuType,
