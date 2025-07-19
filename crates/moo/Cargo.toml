@@ -8,7 +8,7 @@ license.workspace = true
 repository.workspace = true
 
 [lib]
-name = "moo-rs"
+name = "moo"
 path = "src/lib.rs"
 crate-type = ["cdylib", "lib"]
 
