@@ -38,6 +38,20 @@ pub enum MooStateType {
     Final,
 }
 
+pub enum MooIvtOrder {
+    ReadFirst,
+    PushFirst,
+}
+
+impl From<MooCpuType> for MooIvtOrder {
+    fn from(cpu_type: MooCpuType) -> Self {
+        match cpu_type {
+            MooCpuType::Intel80286 => MooIvtOrder::PushFirst,
+            _ => MooIvtOrder::ReadFirst,
+        }
+    }
+}
+
 impl MooCpuType {
     pub fn bitness(&self) -> u32 {
         if self.is_16bit() {
