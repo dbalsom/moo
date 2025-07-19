@@ -15,7 +15,7 @@ pub use registers::*;
 pub use state::*;
 pub use test::*;
 
-#[cfg(feature = "arduinox86_client")]
+#[cfg(feature = "use_arduinox86_client")]
 use arduinox86_client::ServerCpuType;
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -83,14 +83,14 @@ impl MooCpuType {
     }
 }
 
-#[cfg(feature = "arduinox86_client")]
+#[cfg(feature = "use_arduinox86_client")]
 impl From<MooCpuType> for ServerCpuType {
     fn from(cpu_type: MooCpuType) -> Self {
         ServerCpuType::from(&cpu_type)
     }
 }
 
-#[cfg(feature = "arduinox86_client")]
+#[cfg(feature = "use_arduinox86_client")]
 impl From<&MooCpuType> for ServerCpuType {
     fn from(cpu_type: &MooCpuType) -> Self {
         match cpu_type {

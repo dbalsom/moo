@@ -2,7 +2,7 @@ use crate::types::MooCpuType;
 use binrw::binrw;
 use std::fmt::Display;
 
-#[cfg(feature = "use_client")]
+#[cfg(feature = "use_arduinox86_client")]
 use arduinox86_client::RemoteCpuRegistersV1;
 
 pub struct MooRegisters1Init {
@@ -378,7 +378,7 @@ impl MooRegisters1 {
     }
 }
 
-#[cfg(feature = "use_client")]
+#[cfg(feature = "use_arduinox86_client")]
 impl From<RemoteCpuRegistersV1> for MooRegisters1 {
     fn from(remote: RemoteCpuRegistersV1) -> Self {
         Self {
