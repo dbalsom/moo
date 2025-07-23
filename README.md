@@ -348,13 +348,13 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 | 2     | T2      | Tc*  | T2 |
 | 3     | T3      | --  | -- |
 | 4     | T4      | --  | -- |
-| 5     | Tw*     | --  | -- |
+| 5     | Tw**     | --  | -- |
 
 - *Intel renamed the T-states in documentation for the 80286, then changed their mind
   and changed them back in documentation for the 80386. You're free to treat Ts and Tc as
   T1 and T2.
 
-- For 80286 and 80386, explicit Tw states do not occur - wait states are effected by
+- **For 80286 and 80386, explicit Tw states do not occur - wait states are effected by
   repeating Tc/T2.
 
 ---
