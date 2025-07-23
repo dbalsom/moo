@@ -82,7 +82,7 @@ The typical structure of a `MOO` file is:
 The `MOO ` header payload is at least 12 bytes as of file version 1, but may grow in future versions. 
 The current version of `MOO ` is version 1. Additional chunk types may be added without
 incrementing the format version. Version increments will be reserved for changes to existing 
-chunk types. A conforming parser should ignore chunk types it does not recognize. 
+chunk types.
 
 ## Top-level Chunk: `TEST`
 
