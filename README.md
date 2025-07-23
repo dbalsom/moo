@@ -350,6 +350,9 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 | 4     | T4      | --  | -- |
 | 5     | Tw**     | --  | -- |
 
+- T-State is not a status read directly from the CPU as it is not exposed in any way.
+  T-State is calculated based on bus activity.
+
 - *Intel renamed the T-states in documentation for the 80286, then changed their mind
   and changed them back in documentation for the 80386. You're free to treat Ts and Tc as
   T1 and T2.
