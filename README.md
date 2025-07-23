@@ -239,6 +239,9 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
   but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for duplicate hashes
   before publication.
 
+- The hexadecimal ASCII representation of a hash may be added to a **revocation list** in a test suite in the event that a
+  problematic or incorrect test is discovered.
+
 | Field       | Size (bytes) | Description                              |
 |-------------|--------------|------------------------------------------|
 | Hash Data   | 20           | 20 x `uint8` SHA-1 hash                  |
