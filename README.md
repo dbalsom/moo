@@ -342,7 +342,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 ### T-State (`t_state`)
 
 | Value | 808X Meaning | 80286 Meaning | 80386 Meaning |
-|-------|---------|--------------|
+|-------|---------|--------------|-----------|
 | 0     | Ti      | Ti  | Ti |
 | 1     | T1      | Ts  | T1 |
 | 2     | T2      | Tc  | T2 |
