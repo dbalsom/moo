@@ -44,6 +44,8 @@ The typical structure of a `MOO` file is:
 
  - `MOO ` chunk
  - `TEST ` chunk
+   - `NAME` chunk
+   - `BYTS` chunk
    - `INIT` chunk
      - `REGS` chunk
      - `RAM ` chunk 
