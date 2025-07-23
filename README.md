@@ -363,12 +363,12 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 - Only valid for 8088, 8086, V20, V30
 
-| Value | Meaning |
-|-------|---------|
-| 0     | No Queue Operation    |
-| 1     | First Byte Read From Queue  |
-| 2     | Queue Emptied (Flushed)     |
-| 3     | Subsequent Byte Read From Queue     |
+| Value | Abbr | Meaning |
+|-------|------|---------|
+| 0     | -    | No Queue Operation    |
+| 1     | F    | First Byte Read From Queue  |
+| 2     | E    | Queue Emptied (Flushed)     |
+| 3     | S    | Subsequent Byte Read From Queue     |
 
 ---
 
