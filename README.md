@@ -361,6 +361,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### Queue Operation Status (`queue_op_status`)
 
+- This is a two-bit bitfield representing the state of the CPU's queue status pins QS0 and QS1.
 - Only valid for 8088, 8086, V20, V30
 
 | Value | Abbr | Meaning |
