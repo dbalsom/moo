@@ -8,7 +8,7 @@ A Rust library, `moo-rs`, for working with MOO files is included in `/crates/moo
 
 # MOO File Format Specification, Version 1
 
-This document describes the structure of the **MOO** test file format used by CPU tests for the 8088, 8086, V20 and V30 CPUs.
+This document describes the structure of the **MOO** test file format used by CPU tests for the 8088, 8086, V20, V30, 80186 and 80286 CPUs.
 **MOO** stands for Machine Opcode Operation file.
 
 All fields are little-endian.
