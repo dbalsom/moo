@@ -235,8 +235,9 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### 5. `HASH`
 
-- SHA-1 hash of the test from the source JSON. Can be used to uniquely identify a test in both JSON and MOO formats.
-- Format:
+- SHA-1 hash of the test data. The hashing method is subject to change. The hash is not intended to be used as error detection,
+  but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for duplicate hashes
+  before publication.
 
 | Field       | Size (bytes) | Description                              |
 |-------------|--------------|------------------------------------------|
