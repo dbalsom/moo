@@ -92,7 +92,7 @@ Each `TEST` chunk represents a single CPU test case, containing multiple **subch
 |-------------|--------------|------------------------------------------|
 | Chunk Type | 4          | `ASCII_ID` of `TEST` |
 | Chunk Length | 4        | `uint32` length of payload containing `index` field and all following subchunks |
-| Index      | 4          | 0-based index of test in file |
+| Index      | 4          | `uint32` 0-based index of test in file |
 
 ---
 
