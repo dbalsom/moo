@@ -55,15 +55,27 @@ impl From<MooCpuType> for MooIvtOrder {
 }
 
 impl MooCpuType {
-    pub fn bitness(&self) -> u32 {
-        if self.is_16bit() {
+    pub fn bus_bitness(&self) -> u32 {
+        if self.has_16bit_bus() {
             16
         } else {
             8
         }
     }
 
-    pub fn is_16bit(&self) -> bool {
+    pub fn reg_bitness(&self) -> u32 {
+        if self.has_32bit_regs() {
+            32
+        } else {
+            16
+        }
+    }
+
+    pub fn has_32bit_regs(&self) -> bool {
+        matches!(self, MooCpuType::Intel80386Ex)
+    }
+
+    pub fn has_16bit_bus(&self) -> bool {
         matches!(
             self,
             MooCpuType::Intel8086
@@ -74,7 +86,7 @@ impl MooCpuType {
         )
     }
 
-    pub fn is_8bit(&self) -> bool {
+    pub fn has_8bit_bus(&self) -> bool {
         matches!(
             self,
             MooCpuType::Intel8088 | MooCpuType::Intel80188 | MooCpuType::NecV20
