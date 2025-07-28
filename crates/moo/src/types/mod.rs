@@ -4,6 +4,7 @@ pub mod errors;
 pub mod metadata;
 pub mod ram;
 pub mod registers;
+pub mod registers_32;
 pub mod state;
 pub mod test;
 
