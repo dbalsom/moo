@@ -21,6 +21,8 @@ pub enum MooChunkType {
     Registers16,
     #[brw(magic = b"RGS2")]
     XRegisters,
+    #[brw(magic = b"RG32")]
+    Registers32,
     #[brw(magic = b"RAM ")]
     Ram,
     #[brw(magic = b"QUEU")]

@@ -1,7 +1,8 @@
 use crate::{
     prelude::{MooCycleState, MooTestState},
-    types::{MooException, MooRamEntries, MooRamEntry, MooRegisters1, MooTestGenMetadata},
+    types::{MooException, MooRamEntries, MooRamEntry, MooTestGenMetadata},
 };
+use crate::types::MooRegisters;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MooComparison {
@@ -49,10 +50,10 @@ impl MooTest {
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
-    pub fn initial_regs(&self) -> &MooRegisters1 {
+    pub fn initial_regs(&self) -> &MooRegisters {
         &self.initial_state.regs
     }
-    pub fn final_regs(&self) -> &MooRegisters1 {
+    pub fn final_regs(&self) -> &MooRegisters {
         &self.final_state.regs
     }
     pub fn initial_mem_state(&self) -> &MooRamEntries {

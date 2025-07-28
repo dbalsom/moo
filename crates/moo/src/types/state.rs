@@ -1,13 +1,12 @@
-use crate::prelude::MooRegisters1Init;
 use crate::types::chunks::MooChunkType;
-use crate::types::{MooRamEntries, MooRamEntry, MooRegisters1, MooStateType};
+use crate::types::{MooRamEntries, MooRamEntry, MooRegisters, MooRegistersInit, MooStateType};
 use binrw::BinResult;
 use std::io::{Cursor, Write};
 
 #[derive(Clone, Default)]
 pub struct MooTestState {
     pub s_type: MooStateType,
-    pub regs: MooRegisters1,
+    pub regs: MooRegisters,
     pub queue: Vec<u8>,
     pub ram: MooRamEntries,
 }
@@ -15,15 +14,15 @@ pub struct MooTestState {
 impl MooTestState {
     pub fn new(
         s_type: MooStateType,
-        regs_start: &MooRegisters1Init,
-        regs_final: Option<&MooRegisters1Init>,
+        regs_start: &MooRegistersInit,
+        regs_final: Option<&MooRegistersInit>,
         queue: Vec<u8>,
         ram: Vec<MooRamEntry>,
     ) -> Self {
         let regs = if let Some(final_regs) = regs_final {
-            MooRegisters1::from((regs_start, final_regs))
+            MooRegisters::from((regs_start, final_regs))
         } else {
-            MooRegisters1::from(regs_start)
+            MooRegisters::from(regs_start)
         };
 
         let ram_entries = MooRamEntries {
@@ -38,7 +37,7 @@ impl MooTestState {
         }
     }
 
-    pub fn regs(&self) -> &MooRegisters1 {
+    pub fn regs(&self) -> &MooRegisters {
         &self.regs
     }
 
@@ -56,7 +55,8 @@ impl MooTestState {
         let mut state_buffer = Cursor::new(Vec::new());
 
         // Write the initial regs.
-        MooChunkType::Registers16.write(&mut state_buffer, &self.regs)?;
+        let chunk_type = MooChunkType::from(&self.regs);
+        chunk_type.write(&mut state_buffer, &self.regs)?;
 
         // Write the initial queue, if not empty.
         if !self.queue.is_empty() {

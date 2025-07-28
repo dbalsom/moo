@@ -1,3 +1,4 @@
+use crate::types::{MooCpuType, MooRegisters, MooRegisters16};
 use std::io::{Cursor, Read, Seek, Write};
 
 use crate::types::chunks::{
@@ -7,7 +8,7 @@ use crate::types::chunks::{
 use crate::types::errors::MooError;
 use crate::types::state::MooTestState;
 use crate::types::{
-    MooCycleState, MooException, MooFileMetadata, MooRamEntries, MooRegisters1, MooStateType,
+    MooCycleState, MooException, MooFileMetadata, MooRamEntries, MooStateType,
     MooTest, MooTestGenMetadata,
 };
 
@@ -96,6 +97,15 @@ impl MooTestFile {
         let mut test_num = 0;
         let mut have_initial_state = false;
         let mut have_final_state = false;
+        let mut cpu_type = MooCpuType::from_str(&new_file.arch).map_err(
+            |e| binrw::Error::Custom {
+                pos: reader.stream_position().unwrap_or(0),
+                err: Box::new(MooError::ParseError(format!(
+                    "Invalid CPU type '{}': {}",
+                    new_file.arch, e
+                ))),
+            },
+        )?;
 
         // Read chunks until exhausted.
         loop {
@@ -226,6 +236,7 @@ impl MooTestFile {
                                     MooStateType::Initial,
                                     &mut test_reader,
                                     next_chunk.size.into(),
+                                    cpu_type
                                 )?;
                                 have_initial_state = true;
                             }
@@ -234,6 +245,7 @@ impl MooTestFile {
                                     MooStateType::Final,
                                     &mut test_reader,
                                     next_chunk.size.into(),
+                                    cpu_type
                                 )?;
                                 have_final_state = true;
                             }
@@ -303,6 +315,7 @@ impl MooTestFile {
         s_type: MooStateType,
         reader: &mut RS,
         data_len: u64,
+        cpu_type: MooCpuType,
     ) -> BinResult<MooTestState> {
         let mut have_regs = false;
         let mut have_ram = false;
@@ -310,7 +323,7 @@ impl MooTestFile {
 
         let mut new_state = MooTestState {
             s_type,
-            regs: MooRegisters1::default(),
+            regs: MooRegisters::default_opt(cpu_type),
             queue: Vec::new(),
             ram: MooRamEntries {
                 entry_count: 0,
@@ -357,8 +370,8 @@ impl MooTestFile {
             match next_chunk.chunk_type {
                 MooChunkType::Registers16 => {
                     // Read the registers chunk.
-                    let regs = MooRegisters1::read(reader)?;
-                    new_state.regs = regs;
+                    let regs = MooRegisters16::read(reader)?;
+                    new_state.regs = MooRegisters::Sixteen(regs);
                     have_regs = true;
                 }
                 MooChunkType::Ram => {

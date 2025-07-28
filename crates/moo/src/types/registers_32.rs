@@ -1,10 +1,9 @@
-use crate::types::MooCpuType;
-use binrw::binrw;
+
 use std::fmt::Display;
 
-#[cfg(feature = "use_arduinox86_client")]
-use arduinox86_client::RemoteCpuRegistersV1;
+use binrw::binrw;
 
+#[derive(Clone)]
 pub struct MooRegisters32Init {
     pub cr0: u32,
     pub eax: u32,

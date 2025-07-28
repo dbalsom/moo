@@ -4,6 +4,7 @@ pub mod errors;
 pub mod metadata;
 pub mod ram;
 pub mod registers;
+pub mod registers_16;
 pub mod registers_32;
 pub mod state;
 pub mod test;
@@ -13,6 +14,8 @@ pub use cycles::*;
 pub use metadata::*;
 pub use ram::*;
 pub use registers::*;
+pub use registers_16::*;
+pub use registers_32::*;
 pub use state::*;
 pub use test::*;
 
@@ -55,6 +58,29 @@ impl From<MooCpuType> for MooIvtOrder {
 }
 
 impl MooCpuType {
+
+    pub fn from_str(str: &str) -> Result<MooCpuType, String> {
+        if str == "286 " {
+            Ok(MooCpuType::Intel80286)
+        } else if str == "386X" {
+            Ok(MooCpuType::Intel80386Ex)
+        } else if str == "8088" {
+            Ok(MooCpuType::Intel8088)
+        } else if str == "8086" {
+            Ok(MooCpuType::Intel8086)
+        } else if str == "188 " {
+            Ok(MooCpuType::Intel80188)
+        } else if str == "186 " {
+            Ok(MooCpuType::Intel80186)
+        } else if str == "V20 " {
+            Ok(MooCpuType::NecV20)
+        } else if str == "V30 " {
+            Ok(MooCpuType::NecV30)
+        } else {
+            Err(format!("Unknown CPU type: {:?}", str))
+        }
+    }
+
     pub fn bus_bitness(&self) -> u32 {
         if self.has_16bit_bus() {
             16
