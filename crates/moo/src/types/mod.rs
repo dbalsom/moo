@@ -29,6 +29,7 @@ pub enum MooCpuType {
     Intel80188,
     Intel80186,
     Intel80286,
+    Intel80386Ex,
 }
 
 #[derive(Copy, Clone, Debug, Default)]
@@ -68,6 +69,7 @@ impl MooCpuType {
                 | MooCpuType::Intel80186
                 | MooCpuType::Intel80286
                 | MooCpuType::NecV30
+                | MooCpuType::Intel80386Ex
         )
     }
 
@@ -86,6 +88,7 @@ impl MooCpuType {
                 | MooCpuType::Intel80188
                 | MooCpuType::Intel80186
                 | MooCpuType::Intel80286
+                | MooCpuType::Intel80386Ex
         )
     }
 
