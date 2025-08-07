@@ -6,6 +6,7 @@ use binrw::binrw;
 #[derive(Clone)]
 pub struct MooRegisters32Init {
     pub cr0: u32,
+    pub cr3: u32,
     pub eax: u32,
     pub ebx: u32,
     pub ecx: u32,
@@ -33,6 +34,8 @@ pub struct MooRegisters32 {
     reg_mask: u32,
     #[brw(if(reg_mask & MooRegisters32::CR0_MASK != 0))]
     pub cr0: u32,
+    #[brw(if(reg_mask & MooRegisters32::CR3_MASK != 0))]
+    pub cr3: u32, // SMM dump only
     #[brw(if(reg_mask & MooRegisters32::EAX_MASK != 0))]
     pub eax: u32,
     #[brw(if(reg_mask & MooRegisters32::EBX_MASK != 0))]
@@ -74,6 +77,7 @@ pub struct MooRegisters32 {
 impl PartialEq for MooRegisters32 {
     fn eq(&self, other: &Self) -> bool {
         self.cr0 == other.cr0
+            && self.cr3 == other.cr3
             && self.eax == other.eax
             && self.ebx == other.ebx
             && self.ecx == other.ecx
@@ -98,6 +102,7 @@ impl Default for MooRegisters32 {
         Self {
             reg_mask: 0,
             cr0: 0,
+            cr3: 0,
             eax: 0,
             ebx: 0,
             ecx: 0,
@@ -125,6 +130,7 @@ impl From<&MooRegisters32Init> for MooRegisters32 {
         Self {
             reg_mask: MooRegisters32::ALL_SET, // All registers set
             cr0: init.cr0,
+            cr3: init.cr3,
             eax: init.eax,
             ebx: init.ebx,
             ecx: init.ecx,
@@ -154,6 +160,9 @@ impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
 
         if init.0.cr0 != init.1.cr0 {
             reg_mask |= MooRegisters32::CR0_MASK;
+        }
+        if init.0.cr3 != init.1.cr3 {
+            reg_mask |= MooRegisters32::CR3_MASK;
         }
         if init.0.eax != init.1.eax {
             reg_mask |= MooRegisters32::EAX_MASK;
@@ -214,6 +223,7 @@ impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
         Self {
             reg_mask,
             cr0: init.1.cr0,
+            cr3: init.1.cr3,
             eax: init.1.eax,
             ebx: init.1.ebx,
             ecx: init.1.ecx,
@@ -238,29 +248,30 @@ impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
 
 #[rustfmt::skip]
 impl MooRegisters32 {
-    pub const ALL_SET: u32 = 0x0003_FFFF; // All registers set mask
+    pub const ALL_SET: u32 = 0x000F_FFFF; // All registers set mask
 
     pub const TOP_16_MASK: u32 = 0xFFFF_0000; // Mask for the top 16 bits of the register mask
 
     pub const CR0_MASK: u32 = 0x0000_0001; // CR0 register mask
-    pub const EAX_MASK: u32 = 0x0000_0002; // EAX register mask
-    pub const EBX_MASK: u32 = 0x0000_0004; // EBX register mask
-    pub const ECX_MASK: u32 = 0x0000_0008; // ECX register mask
-    pub const EDX_MASK: u32 = 0x0000_0010; // EDX register mask
-    pub const ESI_MASK: u32 = 0x0000_0020; // ESI register mask
-    pub const EDI_MASK: u32 = 0x0000_0040; // EDI register mask
-    pub const EBP_MASK: u32 = 0x0000_0080; // EBP register mask
-    pub const ESP_MASK: u32 = 0x0000_0100; // ESP register mask
-    pub const CS_MASK: u32 = 0x0000_0200; // CS register mask
-    pub const DS_MASK: u32 = 0x0000_0400; // DS register mask
-    pub const ES_MASK: u32 = 0x0000_0800; // ES register mask
-    pub const FS_MASK: u32 = 0x0000_1000; // FS register mask
-    pub const GS_MASK: u32 = 0x0000_2000; // GS register mask
-    pub const SS_MASK: u32 = 0x0000_4000; // SS register mask
-    pub const EIP_MASK: u32 = 0x0000_8000; // EIP register mask
-    pub const EFLAGS_MASK: u32 = 0x0001_0000; // EFLAGS register mask
-    pub const DR6_MASK: u32 = 0x0002_0000; // DR6 register mask
-    pub const DR7_MASK: u32 = 0x0004_0000; // DR7 register mask
+    pub const CR3_MASK: u32 = 0x0000_0002; // CR3 register mask (SMM dump only)
+    pub const EAX_MASK: u32 = 0x0000_0004; // EAX register mask
+    pub const EBX_MASK: u32 = 0x0000_0008; // EBX register mask
+    pub const ECX_MASK: u32 = 0x0000_0010; // ECX register mask
+    pub const EDX_MASK: u32 = 0x0000_0020; // EDX register mask
+    pub const ESI_MASK: u32 = 0x0000_0040; // ESI register mask
+    pub const EDI_MASK: u32 = 0x0000_0080; // EDI register mask
+    pub const EBP_MASK: u32 = 0x0000_0100; // EBP register mask
+    pub const ESP_MASK: u32 = 0x0000_0200; // ESP register mask
+    pub const CS_MASK: u32 = 0x0000_0400; // CS register mask
+    pub const DS_MASK: u32 = 0x0000_0800; // DS register mask
+    pub const ES_MASK: u32 = 0x0000_1000; // ES register mask
+    pub const FS_MASK: u32 = 0x0000_2000; // FS register mask
+    pub const GS_MASK: u32 = 0x0000_4000; // GS register mask
+    pub const SS_MASK: u32 = 0x0000_8000; // SS register mask
+    pub const EIP_MASK: u32 = 0x0001_0000; // EIP register mask
+    pub const EFLAGS_MASK: u32 = 0x0002_0000; // EFLAGS register mask
+    pub const DR6_MASK: u32 = 0x0004_0000; // DR6 register mask
+    pub const DR7_MASK: u32 = 0x0008_0000; // DR7 register mask
 
     pub const FLAG_CARRY: u16       = 0b0000_0000_0000_0001;
     pub const FLAG_RESERVED1: u16   = 0b0000_0000_0000_0010;
