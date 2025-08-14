@@ -67,4 +67,11 @@ impl MooRegisters {
             _ => MooRegisters::Sixteen(MooRegisters16::default()),
         }
     }
+
+    pub fn is_valid(&self) -> bool {
+        match self {
+            MooRegisters::Sixteen(regs) => regs.is_valid(),
+            MooRegisters::ThirtyTwo(regs) => regs.is_valid(),
+        }
+    }
 }
