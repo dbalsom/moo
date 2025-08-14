@@ -74,4 +74,11 @@ impl MooRegisters {
             MooRegisters::ThirtyTwo(regs) => regs.is_valid(),
         }
     }
+
+    pub fn flags(&self) -> u32 {
+        match self {
+            MooRegisters::Sixteen(regs) => regs.flags as u32,
+            MooRegisters::ThirtyTwo(regs) => regs.eflags,
+        }
+    }
 }
