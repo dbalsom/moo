@@ -60,9 +60,9 @@ impl From<MooCpuType> for MooIvtOrder {
 impl MooCpuType {
 
     pub fn from_str(str: &str) -> Result<MooCpuType, String> {
-        if str == "286 " {
+        if (str == "286 ") || (str == "C286") {
             Ok(MooCpuType::Intel80286)
-        } else if str == "386X" {
+        } else if str == "386E" {
             Ok(MooCpuType::Intel80386Ex)
         } else if str == "8088" {
             Ok(MooCpuType::Intel8088)
