@@ -97,7 +97,7 @@ impl MooTestFile {
         let mut test_num = 0;
         let mut have_initial_state = false;
         let mut have_final_state = false;
-        let mut cpu_type = MooCpuType::from_str(&new_file.arch).map_err(
+        let cpu_type = MooCpuType::from_str(&new_file.arch).map_err(
             |e| binrw::Error::Custom {
                 pos: reader.stream_position().unwrap_or(0),
                 err: Box::new(MooError::ParseError(format!(

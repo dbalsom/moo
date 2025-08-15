@@ -2,6 +2,7 @@
 use std::fmt::Display;
 
 use binrw::binrw;
+use crate::types::{MooCpuType};
 
 #[derive(Clone)]
 pub struct MooRegisters32Init {
@@ -273,23 +274,23 @@ impl MooRegisters32 {
     pub const DR6_MASK: u32 = 0x0004_0000; // DR6 register mask
     pub const DR7_MASK: u32 = 0x0008_0000; // DR7 register mask
 
-    pub const FLAG_CARRY: u16       = 0b0000_0000_0000_0001;
-    pub const FLAG_RESERVED1: u16   = 0b0000_0000_0000_0010;
-    pub const FLAG_PARITY: u16      = 0b0000_0000_0000_0100;
-    pub const FLAG_RESERVED3: u16   = 0b0000_0000_0000_1000;
-    pub const FLAG_AUX_CARRY: u16   = 0b0000_0000_0001_0000;
-    pub const FLAG_RESERVED5: u16   = 0b0000_0000_0010_0000;
-    pub const FLAG_ZERO: u16        = 0b0000_0000_0100_0000;
-    pub const FLAG_SIGN: u16        = 0b0000_0000_1000_0000;
-    pub const FLAG_TRAP: u16        = 0b0000_0001_0000_0000;
-    pub const FLAG_INT_ENABLE: u16  = 0b0000_0010_0000_0000;
-    pub const FLAG_DIRECTION: u16   = 0b0000_0100_0000_0000;
-    pub const FLAG_OVERFLOW: u16    = 0b0000_1000_0000_0000;
-    pub const FLAG_F15: u16         = 0b1000_0000_0000_0000; // Reserved bit 15
-    pub const FLAG_MODE: u16        = 0b1000_0000_0000_0000;
-    pub const FLAG_NT: u16          = 0b0100_0000_0000_0000; // Nested Task
-    pub const FLAG_IOPL0: u16       = 0b0001_0000_0000_0000; // IO Privilege Level
-    pub const FLAG_IOPL1: u16       = 0b0010_0000_0000_0000; // IO Privilege Level
+    pub const FLAG_CARRY: u32       = 0b0000_0000_0000_0001;
+    pub const FLAG_RESERVED1: u32   = 0b0000_0000_0000_0010;
+    pub const FLAG_PARITY: u32      = 0b0000_0000_0000_0100;
+    pub const FLAG_RESERVED3: u32   = 0b0000_0000_0000_1000;
+    pub const FLAG_AUX_CARRY: u32   = 0b0000_0000_0001_0000;
+    pub const FLAG_RESERVED5: u32   = 0b0000_0000_0010_0000;
+    pub const FLAG_ZERO: u32        = 0b0000_0000_0100_0000;
+    pub const FLAG_SIGN: u32        = 0b0000_0000_1000_0000;
+    pub const FLAG_TRAP: u32        = 0b0000_0001_0000_0000;
+    pub const FLAG_INT_ENABLE: u32  = 0b0000_0010_0000_0000;
+    pub const FLAG_DIRECTION: u32   = 0b0000_0100_0000_0000;
+    pub const FLAG_OVERFLOW: u32    = 0b0000_1000_0000_0000;
+    pub const FLAG_F15: u32         = 0b1000_0000_0000_0000; // Reserved bit 15
+    pub const FLAG_MODE: u32        = 0b1000_0000_0000_0000;
+    pub const FLAG_NT: u32          = 0b0100_0000_0000_0000; // Nested Task
+    pub const FLAG_IOPL0: u32       = 0b0001_0000_0000_0000; // IO Privilege Level
+    pub const FLAG_IOPL1: u32       = 0b0010_0000_0000_0000; // IO Privilege Level
 
     pub fn set_ax(&mut self, value: u16) {
         self.reg_mask |= MooRegisters32::EAX_MASK;
@@ -503,3 +504,97 @@ impl MooRegisters32 {
     }
 }
 
+
+pub struct MooRegisters32Printer<'a> {
+    pub regs: &'a MooRegisters32,
+    pub cpu_type: MooCpuType,
+    pub diff: Option<&'a MooRegisters32>,
+}
+
+macro_rules! diff_chr {
+    ($self:expr, $reg:ident) => {
+        if let Some(d) = $self.diff {
+            if $self.regs.$reg != d.$reg {
+                '*'
+            } else {
+                ' '
+            }
+        } else {
+            ' '
+        }
+    };
+}
+
+impl Display for crate::types::MooRegisters32Printer<'_> {
+    #[rustfmt::skip]
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let reg_str = format!(
+            "EAX:{}{:08X} EBX:{}{:08X} ECX:{}{:08X} EDX:{}{:08X}\n\
+             ESI:{}{:08X} EDI:{}{:08X} EBP:{}{:08X} ESP:{}{:08X} \n\
+             CS:{}{:04X} DS:{}{:04X} ES:{}{:04X} FS:{}{:04X} GS:{}{:04X} SS:{}{:04X}\n\
+             EIP:{}{:08X}\n\
+             EFLAGS:{}{:08X} ",
+            diff_chr!(self, eax), self.regs.eax,
+            diff_chr!(self, ebx), self.regs.ebx,
+            diff_chr!(self, ecx), self.regs.ecx,
+            diff_chr!(self, edx), self.regs.edx,
+            diff_chr!(self, esi), self.regs.esi,
+            diff_chr!(self, edi), self.regs.edi,
+            diff_chr!(self, ebp), self.regs.ebp,
+            diff_chr!(self, esp), self.regs.esp,
+
+            diff_chr!(self, cs), self.regs.cs,
+            diff_chr!(self, ds), self.regs.ds,
+            diff_chr!(self, es), self.regs.es,
+            diff_chr!(self, fs), self.regs.fs,
+            diff_chr!(self, gs), self.regs.gs,
+            diff_chr!(self, ss), self.regs.ss,
+            diff_chr!(self, eip), self.regs.eip,
+            diff_chr!(self, eflags), self.regs.eflags,
+        );
+
+        // Expand flag info
+        let f = self.regs.eflags;
+        let c_chr = if MooRegisters32::FLAG_CARRY & f != 0 { 'C' } else { 'c' };
+        let p_chr = if MooRegisters32::FLAG_PARITY & f != 0 { 'P' } else { 'p' };
+        let a_chr = if MooRegisters32::FLAG_AUX_CARRY & f != 0 {
+            'A'
+        } else {
+            'a'
+        };
+        let z_chr = if MooRegisters32::FLAG_ZERO & f != 0 { 'Z' } else { 'z' };
+        let s_chr = if MooRegisters32::FLAG_SIGN & f != 0 { 'S' } else { 's' };
+        let t_chr = if MooRegisters32::FLAG_TRAP & f != 0 { 'T' } else { 't' };
+        let i_chr = if MooRegisters32::FLAG_INT_ENABLE & f != 0 {
+            'I'
+        } else {
+            'i'
+        };
+        let d_chr = if MooRegisters32::FLAG_DIRECTION & f != 0 {
+            'D'
+        } else {
+            'd'
+        };
+        let o_chr = if MooRegisters32::FLAG_OVERFLOW & f != 0 {
+            'O'
+        } else {
+            'o'
+        };
+        let m_chr =
+            if f & MooRegisters32::FLAG_F15 != 0 {
+                '1'
+            } else {
+                '0'
+            };
+
+        let nt_chr = if f & MooRegisters32::FLAG_NT != 0 { '1' } else { '0' };
+        let iopl0_chr = if f & MooRegisters32::FLAG_IOPL0 != 0 { '1' } else { '0' };
+        let iopl1_chr = if f & MooRegisters32::FLAG_IOPL1 != 0 { '1' } else { '0' };
+
+        write!(
+            fmt,
+            "{reg_str}{m_chr}{nt_chr}{iopl1_chr}{iopl0_chr}\
+            {o_chr}{d_chr}{i_chr}{t_chr}{s_chr}{z_chr}0{a_chr}0{p_chr}1{c_chr}",
+        )
+    }
+}
