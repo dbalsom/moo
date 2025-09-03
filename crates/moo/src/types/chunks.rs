@@ -19,7 +19,7 @@ pub enum MooChunkType {
     FinalState,
     #[brw(magic = b"REGS")]
     Registers16,
-    #[brw(magic = b"RGS2")]
+    #[brw(magic = b"REGX")]
     XRegisters,
     #[brw(magic = b"RG32")]
     Registers32,
