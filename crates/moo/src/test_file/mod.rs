@@ -200,6 +200,7 @@ impl MooTestFile {
                                 final_state: final_state.clone(),
                                 cycles: cycle_vec.clone(),
                                 exception: exception.clone(),
+                                hash: hash.clone(),
                             });
                             break;
                         }
@@ -372,6 +373,11 @@ impl MooTestFile {
                     // Read the registers chunk.
                     let regs = MooRegisters16::read(reader)?;
                     new_state.regs = MooRegisters::Sixteen(regs);
+                    have_regs = true;
+                }
+                MooChunkType::Registers32 => {
+                    let regs = crate::types::MooRegisters32::read(reader)?;
+                    new_state.regs = MooRegisters::ThirtyTwo(regs);
                     have_regs = true;
                 }
                 MooChunkType::Ram => {

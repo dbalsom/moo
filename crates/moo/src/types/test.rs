@@ -24,6 +24,7 @@ pub struct MooTest {
     pub(crate) final_state: MooTestState,
     pub(crate) cycles: Vec<MooCycleState>,
     pub(crate) exception: Option<MooException>,
+    pub(crate) hash: Option<[u8; 20]>,
 }
 
 impl MooTest {
@@ -35,6 +36,7 @@ impl MooTest {
         final_state: MooTestState,
         cycles: &[MooCycleState],
         exception: Option<MooException>,
+        hash: Option<[u8; 20]>,
     ) -> Self {
         Self {
             name,
@@ -44,6 +46,7 @@ impl MooTest {
             final_state,
             cycles: cycles.to_vec(),
             exception,
+            hash,
         }
     }
 
