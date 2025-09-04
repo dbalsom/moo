@@ -47,19 +47,19 @@ impl MooCycleState {
     }
     #[inline]
     pub fn is_reading_mem(&self) -> bool {
-        (self.memory_status & Self::MRDC_BIT) == 0
+        (self.memory_status & Self::MRDC_BIT) != 0
     }
     #[inline]
     pub fn is_writing_mem(&self) -> bool {
-        (self.memory_status & Self::MWTC_BIT) == 0
+        (self.memory_status & Self::MWTC_BIT) != 0
     }
     #[inline]
     pub fn is_reading_io(&self) -> bool {
-        (self.io_status & Self::IORC_BIT) == 0
+        (self.io_status & Self::IORC_BIT) != 0
     }
     #[inline]
     pub fn is_writing_io(&self) -> bool {
-        (self.io_status & Self::IOWC_BIT) == 0
+        (self.io_status & Self::IOWC_BIT) != 0
     }
     #[inline]
     pub fn is_reading(&self) -> bool {
@@ -122,7 +122,7 @@ impl Display for MooCycleStatePrinter {
             true => "R",
             false => ".",
         };
-        let aws_chr = match self.state.memory_status & MooCycleState::AMWC_BIT == 0 {
+        let aws_chr = match self.state.memory_status & MooCycleState::AMWC_BIT != 0 {
             true => 'A',
             false => '.',
         };
@@ -130,15 +130,15 @@ impl Display for MooCycleStatePrinter {
             true => "W",
             false => ".",
         };
-        let ior_chr = match self.state.io_status & MooCycleState::IORC_BIT == 0 {
+        let ior_chr = match self.state.io_status & MooCycleState::IORC_BIT != 0 {
             true => 'R',
             false => '.',
         };
-        let aiow_chr = match self.state.io_status & MooCycleState::AIOWC_BIT == 0 {
+        let aiow_chr = match self.state.io_status & MooCycleState::AIOWC_BIT != 0 {
             true => 'A',
             false => '.',
         };
-        let iow_chr = match self.state.io_status & MooCycleState::IOWC_BIT == 0 {
+        let iow_chr = match self.state.io_status & MooCycleState::IOWC_BIT != 0 {
             true => 'W',
             false => '.',
         };
