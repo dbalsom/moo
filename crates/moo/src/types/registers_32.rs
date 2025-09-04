@@ -529,11 +529,13 @@ impl Display for crate::types::MooRegisters32Printer<'_> {
     #[rustfmt::skip]
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let reg_str = format!(
-            "EAX:{}{:08X} EBX:{}{:08X} ECX:{}{:08X} EDX:{}{:08X}\n\
+            "CR0:{}{:08X}\n\
+             EAX:{}{:08X} EBX:{}{:08X} ECX:{}{:08X} EDX:{}{:08X}\n\
              ESI:{}{:08X} EDI:{}{:08X} EBP:{}{:08X} ESP:{}{:08X} \n\
              CS:{}{:04X} DS:{}{:04X} ES:{}{:04X} FS:{}{:04X} GS:{}{:04X} SS:{}{:04X}\n\
              EIP:{}{:08X}\n\
              EFLAGS:{}{:08X} ",
+            diff_chr!(self, cr0), self.regs.cr0,
             diff_chr!(self, eax), self.regs.eax,
             diff_chr!(self, ebx), self.regs.ebx,
             diff_chr!(self, ecx), self.regs.ecx,
