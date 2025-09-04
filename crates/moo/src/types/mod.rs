@@ -105,6 +105,7 @@ impl Display for MooBusState {
     }
 }
 
+#[derive (Copy, Clone, Debug)]
 pub enum MooIvtOrder {
     ReadFirst,
     PushFirst,
