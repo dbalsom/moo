@@ -25,13 +25,13 @@ impl MooCycleState {
     pub const PIN_READY: u8 = 0b0000_0100;
     pub const PIN_LOCK: u8 = 0b0000_1000;
 
-    pub const MRDC_BIT: u8 = 0b0000_0001;
+    pub const MRDC_BIT: u8 = 0b0000_0100;
     pub const AMWC_BIT: u8 = 0b0000_0010;
-    pub const MWTC_BIT: u8 = 0b0000_0100;
+    pub const MWTC_BIT: u8 = 0b0000_0001;
 
-    pub const IORC_BIT: u8 =  0b0000_0001;
+    pub const IORC_BIT: u8 =  0b0000_0100;
     pub const AIOWC_BIT: u8 = 0b0000_0010;
-    pub const IOWC_BIT: u8 = 0b0000_0100;
+    pub const IOWC_BIT: u8 = 0b0000_0001;
 
     #[inline]
     pub fn bhe(&self) -> bool {
