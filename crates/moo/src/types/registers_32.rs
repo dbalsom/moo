@@ -5,6 +5,54 @@ use binrw::binrw;
 use crate::types::{MooCpuType};
 
 #[derive(Clone)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptor32 {
+    pub access: u32,
+    pub base: u32,
+    pub limit: u32,
+}
+
+impl Display for MooDescriptor32 {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            fmt,
+            "Access:{:08X} Base:{:08X} Limit:{:08X}",
+            self.access, self.base, self.limit,
+        )
+    }
+}
+/*
+    MOO-rs Copyright 2025 Daniel Balsom
+    https://github.com/dbalsom/moo
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the “Software”),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
+#[derive(Clone)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptors32 {
+
+}
+
+#[derive(Clone)]
 pub struct MooRegisters32Init {
     pub cr0: u32,
     pub cr3: u32,
@@ -274,6 +322,8 @@ impl MooRegisters32 {
     pub const DR6_MASK: u32 = 0x0004_0000; // DR6 register mask
     pub const DR7_MASK: u32 = 0x0008_0000; // DR7 register mask
 
+    pub const SHUTDOWN_BIT: u32 = 0x8000_0000; // Indicates if the CPU shutdown. This should be the only bit set if set.
+
     pub const FLAG_CARRY: u32       = 0b0000_0000_0000_0001;
     pub const FLAG_RESERVED1: u32   = 0b0000_0000_0000_0010;
     pub const FLAG_PARITY: u32      = 0b0000_0000_0000_0100;
@@ -292,17 +342,43 @@ impl MooRegisters32 {
     pub const FLAG_IOPL0: u32       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u32       = 0b0010_0000_0000_0000; // IO Privilege Level
 
+    pub fn set_shutdown(&mut self, state: bool) {
+        if state {
+            // Clear out all other bits.
+            self.reg_mask = MooRegisters32::SHUTDOWN_BIT;
+        }
+        else {
+            self.reg_mask &= !MooRegisters32::SHUTDOWN_BIT;
+        }
+    }
+
+    pub fn set_eax(&mut self, value: u32) {
+        self.reg_mask |= MooRegisters32::EAX_MASK;
+        self.eax = value;
+    }
     pub fn set_ax(&mut self, value: u16) {
         self.reg_mask |= MooRegisters32::EAX_MASK;
         self.eax = (self.eax & MooRegisters32::TOP_16_MASK) | value as u32;
+    }
+    pub fn set_ebx(&mut self, value: u32) {
+        self.reg_mask |= MooRegisters32::EBX_MASK;
+        self.ebx = value;
     }
     pub fn set_bx(&mut self, value: u16) {
         self.reg_mask |= MooRegisters32::EBX_MASK;
         self.ebx = (self.ebx & MooRegisters32::TOP_16_MASK) | value as u32;
     }
+    pub fn set_ecx(&mut self, value: u32) {
+        self.reg_mask |= MooRegisters32::ECX_MASK;
+        self.ecx = value;
+    }
     pub fn set_cx(&mut self, value: u16) {
         self.reg_mask |= MooRegisters32::ECX_MASK;
         self.ecx = (self.ecx & MooRegisters32::TOP_16_MASK) | value as u32;
+    }
+    pub fn set_edx(&mut self, value: u32) {
+        self.reg_mask |= MooRegisters32::EDX_MASK;
+        self.edx = value;
     }
     pub fn set_dx(&mut self, value: u16) {
         self.reg_mask |= MooRegisters32::EDX_MASK;
@@ -393,6 +469,34 @@ impl MooRegisters32 {
             None
         }
     }
+    pub fn eax(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
+            Some(self.eax)
+        } else {
+            None
+        }
+    }
+    pub fn ebx(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
+            Some(self.ebx)
+        } else {
+            None
+        }
+    }
+    pub fn ecx(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
+            Some(self.ecx)
+        } else {
+            None
+        }
+    }
+    pub fn edx(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
+            Some(self.edx)
+        } else {
+            None
+        }
+    }
     pub fn cs(&self) -> Option<u16> {
         if self.reg_mask & MooRegisters32::CS_MASK != 0 {
             Some(self.cs as u16)
@@ -449,6 +553,20 @@ impl MooRegisters32 {
             None
         }
     }
+    pub fn cr0(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::CR0_MASK != 0 {
+            Some(self.cr0)
+        } else {
+            None
+        }
+    }
+    pub fn cr3(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::CR3_MASK != 0 {
+            Some(self.cr3)
+        } else {
+            None
+        }
+    }
     pub fn esi(&self) -> Option<u32> {
         if self.reg_mask & MooRegisters32::ESI_MASK != 0 {
             Some(self.esi)
@@ -456,7 +574,7 @@ impl MooRegisters32 {
             None
         }
     }
-    pub fn di(&self) -> Option<u32> {
+    pub fn edi(&self) -> Option<u32> {
         if self.reg_mask & MooRegisters32::EDI_MASK != 0 {
             Some(self.edi)
         } else {
@@ -487,6 +605,20 @@ impl MooRegisters32 {
     pub fn eflags(&self) -> Option<u32> {
         if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
             Some(self.eflags)
+        } else {
+            None
+        }
+    }
+    pub fn dr6(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::DR6_MASK != 0 {
+            Some(self.dr6)
+        } else {
+            None
+        }
+    }
+    pub fn dr7(&self) -> Option<u32> {
+        if self.reg_mask & MooRegisters32::DR7_MASK != 0 {
+            Some(self.dr7)
         } else {
             None
         }

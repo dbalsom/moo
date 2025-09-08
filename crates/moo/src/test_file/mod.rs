@@ -1,12 +1,36 @@
-use crate::types::{MooCpuType, MooRegisters, MooRegisters16};
+/*
+    MOO-rs Copyright 2025 Daniel Balsom
+    https://github.com/dbalsom/moo
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the “Software”),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+pub mod stats;
+
 use std::io::{Cursor, Read, Seek, Write};
 
+use crate::types::{MooCpuType, MooRegisters, MooRegisters16};
 use crate::types::chunks::{
     MooBytesChunk, MooChunkHeader, MooChunkType, MooFileHeader, MooHashChunk, MooNameChunk,
     MooTestChunk,
 };
 use crate::types::errors::MooError;
-use crate::types::state::MooTestState;
+use crate::types::test_state::MooTestState;
 use crate::types::{
     MooCycleState, MooException, MooFileMetadata, MooRamEntries, MooStateType,
     MooTest, MooTestGenMetadata,
@@ -18,15 +42,17 @@ use sha1::Digest;
 pub struct MooTestFile {
     version: u8,
     arch: String,
+    cpu_type: MooCpuType,
     tests: Vec<MooTest>,
     metadata: Option<MooFileMetadata>,
 }
 
 impl MooTestFile {
-    pub fn new(version: u8, arch: String, capacity: usize) -> Self {
+    pub fn new(version: u8, cpu_type: MooCpuType, capacity: usize) -> Self {
         Self {
             version,
-            arch,
+            arch: cpu_type.to_str().to_string(),
+            cpu_type,
             tests: Vec::with_capacity(capacity),
             metadata: None,
         }
@@ -80,9 +106,20 @@ impl MooTestFile {
         // Read the file header.
         let header: MooFileHeader = MooFileHeader::read(reader)?;
 
+        let cpu_string =  String::from_utf8_lossy(&header.cpu_name).to_string();
+        let cpu_type = MooCpuType::from_str(&cpu_string).map_err(
+            |e| binrw::Error::Custom {
+                pos: reader.stream_position().unwrap_or(0),
+                err: Box::new(MooError::ParseError(format!(
+                    "Invalid CPU type '{}': {}",
+                    cpu_string, e
+                ))),
+            },
+        )?;
+
         let mut new_file = MooTestFile::new(
             header.version,
-            String::from_utf8_lossy(&header.cpu_name).to_string(),
+            cpu_type,
             header.test_count as usize,
         );
 

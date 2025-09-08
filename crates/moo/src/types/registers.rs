@@ -1,6 +1,89 @@
+/*
+    MOO-rs Copyright 2025 Daniel Balsom
+    https://github.com/dbalsom/moo
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the “Software”),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
 use binrw::binrw;
 use crate::types::{MooCpuType, MooRegisters16, MooRegisters16Init, MooRegisters32, MooRegisters32Init};
 use crate::types::chunks::MooChunkType;
+
+
+#[derive (Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+pub enum MooRegister {
+    AX,
+    BX,
+    CX,
+    DX,
+    CS,
+    SS,
+    DS,
+    ES,
+    SP,
+    BP,
+    SI,
+    DI,
+    IP,
+    FLAGS,
+    CR0,
+    CR3,
+    EAX,
+    EBX,
+    ECX,
+    EDX,
+    ESI,
+    EDI,
+    EBP,
+    ESP,
+    FS,
+    GS,
+    EIP,
+    DR6,
+    DR7,
+    EFLAGS,
+}
+
+impl MooRegister {
+    pub fn is_32bit(&self) -> bool {
+        matches!(self,
+            MooRegister::EAX | MooRegister::EBX | MooRegister::ECX | MooRegister::EDX |
+            MooRegister::ESI | MooRegister::EDI | MooRegister::EBP | MooRegister::ESP |
+            MooRegister::EIP | MooRegister::EFLAGS | MooRegister::CR0 | MooRegister::CR3 |
+            MooRegister::DR6 | MooRegister::DR7
+        )
+    }
+}
+
+#[derive (Copy, Clone, Debug)]
+pub struct MooRegisterDiff {
+    pub register: MooRegister,
+    pub initial: u32,
+    pub r#final: u32,
+}
+
+impl MooRegisterDiff {
+    pub fn register(&self) -> MooRegister {
+        self.register
+    }
+
+}
 
 #[derive (Clone, PartialEq)]
 #[binrw]

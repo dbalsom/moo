@@ -1,6 +1,29 @@
+/*
+    MOO-rs Copyright 2025 Daniel Balsom
+    https://github.com/dbalsom/moo
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the “Software”),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
 use std::fmt::Display;
 
-use crate::types::MooCpuType;
+use crate::types::{MooCpuType};
 use binrw::binrw;
 
 #[derive(Clone)]
@@ -197,6 +220,8 @@ impl From<(&MooRegisters16Init, &MooRegisters16Init)> for MooRegisters16 {
 impl MooRegisters16 {
     pub const ALL_SET: u16 = 0x3FFF; // All registers set mask
 
+    pub const SHUTDOWN_BIT: u16 = 0x8000; // If set, indicates the CPU was shutdown.
+
     pub const FLAG_CARRY: u16       = 0b0000_0000_0000_0001;
     pub const FLAG_RESERVED1: u16   = 0b0000_0000_0000_0010;
     pub const FLAG_PARITY: u16      = 0b0000_0000_0000_0100;
@@ -214,6 +239,16 @@ impl MooRegisters16 {
     pub const FLAG_NT: u16          = 0b0100_0000_0000_0000; // Nested Task
     pub const FLAG_IOPL0: u16       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u16       = 0b0010_0000_0000_0000; // IO Privilege Level
+
+    pub fn set_shutdown(&mut self, state: bool) {
+        if state {
+            // Clear out all other bits.
+            self.reg_mask = MooRegisters16::SHUTDOWN_BIT;
+        }
+        else {
+            self.reg_mask &= !MooRegisters16::SHUTDOWN_BIT;
+        }
+    }
 
     pub fn set_ax(&mut self, value: u16) {
         self.reg_mask |= 0x0001;

@@ -1,0 +1,28 @@
+[package]
+name = "moo_report"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+clap = { version = "4.5", features = ["derive"] }
+walkdir = "2.5"
+anyhow = "1.0"
+
+# gzip support for *.moo.gz
+flate2 = "1.0"
+
+# for a timestamp in the header (no timezone features needed)
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+
+# charts
+plotly = "0.13"
+serde.workspace = true
+env_logger.workspace = true
+log.workspace = true
+
+# ---- your MOO crate ----
+# adjust the path/name to wherever your library is
+moo-rs = { path = "../moo" }

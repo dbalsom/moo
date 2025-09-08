@@ -1,3 +1,26 @@
+/*
+    MOO-rs Copyright 2025 Daniel Balsom
+    https://github.com/dbalsom/moo
+
+    Permission is hereby granted, free of charge, to any person obtaining a
+    copy of this software and associated documentation files (the “Software”),
+    to deal in the Software without restriction, including without limitation
+    the rights to use, copy, modify, merge, publish, distribute, sublicense,
+    and/or sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in
+    all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+    DEALINGS IN THE SOFTWARE.
+*/
+
 pub mod chunks;
 pub mod cycles;
 pub mod errors;
@@ -6,8 +29,9 @@ pub mod ram;
 pub mod registers;
 pub mod registers_16;
 pub mod registers_32;
-pub mod state;
+pub mod test_state;
 pub mod test;
+pub mod flags;
 
 use std::fmt::Display;
 use binrw::binrw;
@@ -17,7 +41,7 @@ pub use ram::*;
 pub use registers::*;
 pub use registers_16::*;
 pub use registers_32::*;
-pub use state::*;
+pub use test_state::*;
 pub use test::*;
 
 /// [MooCpuType] represents the type of CPU used to produce a test case.
@@ -185,6 +209,20 @@ impl MooCpuType {
             Ok(MooCpuType::NecV30)
         } else {
             Err(format!("Unknown CPU type: {:?}", str))
+        }
+    }
+
+    pub fn to_str(&self) -> &str {
+        use MooCpuType::*;
+        match self {
+            Intel80286 => "286 ",
+            Intel80386Ex => "386E",
+            Intel8088 => "8088",
+            Intel8086 => "8086",
+            Intel80188 => "188 ",
+            Intel80186 => "186 ",
+            NecV20 => "V20 ",
+            NecV30 => "V30 ",
         }
     }
 
