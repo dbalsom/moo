@@ -21,9 +21,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+use crate::types::{MooBusState, MooCpuType, MooCpuWidth, MooDataWidth, MooTState};
 use binrw::binrw;
 use std::fmt::Display;
-use crate::types::{MooBusState, MooCpuType, MooCpuWidth, MooDataWidth, MooTState};
 
 #[derive(Copy, Clone, Debug, Default)]
 #[binrw]
@@ -52,7 +52,7 @@ impl MooCycleState {
     pub const AMWC_BIT: u8 = 0b0000_0010;
     pub const MWTC_BIT: u8 = 0b0000_0001;
 
-    pub const IORC_BIT: u8 =  0b0000_0100;
+    pub const IORC_BIT: u8 = 0b0000_0100;
     pub const AIOWC_BIT: u8 = 0b0000_0010;
     pub const IOWC_BIT: u8 = 0b0000_0001;
 
@@ -114,9 +114,7 @@ impl MooCycleStatePrinter {
         match cpu_width {
             MooCpuWidth::Eight => MooDataWidth::EightLow,
             MooCpuWidth::Sixteen => {
-                if (self.address_latch & 1 != 0)
-                    && (self.state.pins0 & MooCycleState::PIN_ALE == 0)
-                {
+                if (self.address_latch & 1 != 0) && (self.state.pins0 & MooCycleState::PIN_ALE == 0) {
                     MooDataWidth::EightHigh
                 }
                 else if self.state.pins0 & MooCycleState::PIN_BHE == 0 {
@@ -143,7 +141,8 @@ impl Display for MooCycleStatePrinter {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ale_str = if self.state.pins0 & MooCycleState::PIN_ALE != 0 {
             "A:"
-        } else {
+        }
+        else {
             "  "
         };
 
@@ -179,6 +178,16 @@ impl Display for MooCycleStatePrinter {
             false => '.',
         };
 
+        let ready_chr = match self.state.pins0 & MooCycleState::PIN_READY != 0 {
+            true => 'R',
+            false => '.',
+        };
+
+        let lock_chr = match self.state.pins0 & MooCycleState::PIN_LOCK != 0 {
+            true => 'L',
+            false => '.',
+        };
+
         let intr_chr = '.';
         let inta_chr = '.';
 
@@ -190,7 +199,6 @@ impl Display for MooCycleStatePrinter {
         let t_string = self.cpu_type.tstate_to_string(t_state);
 
         let mut xfer_str = "        ".to_string();
-
 
         let bus_active = match self.cpu_type {
             MooCpuType::Intel80386Ex => {
@@ -230,7 +238,7 @@ impl Display for MooCycleStatePrinter {
             f,
             "{ale_str:02}{addr_latch:0bus_chr_width$X}:{addr_bus:0bus_chr_width$X}:{data_bus:0data_chr_width$X} \
             {seg_str:02} M:{rs_chr}{aws_chr}{ws_chr} I:{ior_chr}{aiow_chr}{iow_chr} \
-            P:{intr_chr}{inta_chr}{bhe_chr} {bus_str:04}[{bus_raw:01}] {t_str:02} {xfer_str:06}",
+            P:{intr_chr}{inta_chr}{lock_chr}{ready_chr}{bhe_chr} {bus_str:04}[{bus_raw:01}] {t_str:02} {xfer_str:06}",
             ale_str = ale_str,
             addr_latch = self.address_latch,
             addr_bus = self.state.address_bus,
