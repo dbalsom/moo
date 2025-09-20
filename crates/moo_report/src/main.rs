@@ -405,8 +405,11 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
             else {
                 (r.exceptions_total as f64) * 100.0 / (r.total_tests as f64)
             };
-            if pct > 33.33 {
+            if pct > 50.00 {
                 "rgba(255,210,210,1)".to_string() // light pink
+            }
+            else if pct > 33.0 {
+                "rgba(255,255,210,1)".to_string() // light yellow
             }
             else {
                 "rgba(255,255,255,1)".to_string() // white
