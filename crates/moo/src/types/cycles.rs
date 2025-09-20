@@ -183,7 +183,8 @@ impl Display for MooCycleStatePrinter {
             false => '.',
         };
 
-        let lock_chr = match self.state.pins0 & MooCycleState::PIN_LOCK != 0 {
+        // LOCK is consistently active-low across all x86 CPUs.
+        let lock_chr = match self.state.pins0 & MooCycleState::PIN_LOCK == 0 {
             true => 'L',
             false => '.',
         };
