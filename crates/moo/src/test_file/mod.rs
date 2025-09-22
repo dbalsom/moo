@@ -24,16 +24,20 @@ pub mod stats;
 
 use std::io::{Cursor, Read, Seek, Write};
 
-use crate::types::{MooCpuType, MooRegisters, MooRegisters16};
-use crate::types::chunks::{
-    MooBytesChunk, MooChunkHeader, MooChunkType, MooFileHeader, MooHashChunk, MooNameChunk,
-    MooTestChunk,
-};
-use crate::types::errors::MooError;
-use crate::types::test_state::MooTestState;
 use crate::types::{
-    MooCycleState, MooException, MooFileMetadata, MooRamEntries, MooStateType,
-    MooTest, MooTestGenMetadata,
+    chunks::{MooBytesChunk, MooChunkHeader, MooChunkType, MooFileHeader, MooHashChunk, MooNameChunk, MooTestChunk},
+    errors::MooError,
+    test_state::MooTestState,
+    MooCpuType,
+    MooCycleState,
+    MooException,
+    MooFileMetadata,
+    MooRamEntries,
+    MooRegisters,
+    MooRegisters16,
+    MooStateType,
+    MooTest,
+    MooTestGenMetadata,
 };
 
 use binrw::{BinRead, BinResult, BinWrite};
@@ -106,22 +110,16 @@ impl MooTestFile {
         // Read the file header.
         let header: MooFileHeader = MooFileHeader::read(reader)?;
 
-        let cpu_string =  String::from_utf8_lossy(&header.cpu_name).to_string();
-        let cpu_type = MooCpuType::from_str(&cpu_string).map_err(
-            |e| binrw::Error::Custom {
-                pos: reader.stream_position().unwrap_or(0),
-                err: Box::new(MooError::ParseError(format!(
-                    "Invalid CPU type '{}': {}",
-                    cpu_string, e
-                ))),
-            },
-        )?;
+        let cpu_string = String::from_utf8_lossy(&header.cpu_name).to_string();
+        let cpu_type = MooCpuType::from_str(&cpu_string).map_err(|e| binrw::Error::Custom {
+            pos: reader.stream_position().unwrap_or(0),
+            err: Box::new(MooError::ParseError(format!(
+                "Invalid CPU type '{}': {}",
+                cpu_string, e
+            ))),
+        })?;
 
-        let mut new_file = MooTestFile::new(
-            header.version,
-            cpu_type,
-            header.test_count as usize,
-        );
+        let mut new_file = MooTestFile::new(header.version, cpu_type, header.test_count as usize);
 
         log::debug!(
             "Reading MooTestFile: version {}, arch: {} test_ct: {}",
@@ -134,25 +132,20 @@ impl MooTestFile {
         let mut test_num = 0;
         let mut have_initial_state = false;
         let mut have_final_state = false;
-        let cpu_type = MooCpuType::from_str(&new_file.arch).map_err(
-            |e| binrw::Error::Custom {
-                pos: reader.stream_position().unwrap_or(0),
-                err: Box::new(MooError::ParseError(format!(
-                    "Invalid CPU type '{}': {}",
-                    new_file.arch, e
-                ))),
-            },
-        )?;
+        let cpu_type = MooCpuType::from_str(&new_file.arch).map_err(|e| binrw::Error::Custom {
+            pos: reader.stream_position().unwrap_or(0),
+            err: Box::new(MooError::ParseError(format!(
+                "Invalid CPU type '{}': {}",
+                new_file.arch, e
+            ))),
+        })?;
 
         // Read chunks until exhausted.
         loop {
             if test_num == header.test_count as usize {
                 // We have read all tests, exit the loop.
                 log::trace!("Reached expected test count: {}", test_num);
-                log::trace!(
-                    "{} bytes remaining in reader.",
-                    reader_len - reader.stream_position()?
-                );
+                log::trace!("{} bytes remaining in reader.", reader_len - reader.stream_position()?);
                 break;
             }
 
@@ -199,11 +192,7 @@ impl MooTestFile {
                     //log::debug!("Reading test body for test {}", test_num);
                     let test_chunk = MooTestChunk::read(reader)?;
                     if test_chunk.index != (test_num as u32) {
-                        log::warn!(
-                            "Test index mismatch: expected {}, got {}",
-                            test_num,
-                            test_chunk.index
-                        );
+                        log::warn!("Test index mismatch: expected {}, got {}", test_num, test_chunk.index);
                     }
 
                     test_num += 1;
@@ -225,8 +214,7 @@ impl MooTestFile {
 
                     loop {
                         // Read the next chunk type.
-                        let bytes_remaining =
-                            test_reader.get_ref().len() - test_reader.position() as usize;
+                        let bytes_remaining = test_reader.get_ref().len() - test_reader.position() as usize;
                         if bytes_remaining == 0 {
                             // Push the test to the file.
                             new_file.add_test(MooTest {
@@ -258,11 +246,7 @@ impl MooTestFile {
                                 // Read the name chunk.
                                 let name_chunk: MooNameChunk = BinRead::read(&mut test_reader)?;
                                 test_name = name_chunk.name.clone();
-                                log::trace!(
-                                    "Reading NAME chunk: name: {} len: {}",
-                                    name_chunk.name,
-                                    name_chunk.len
-                                );
+                                log::trace!("Reading NAME chunk: name: {} len: {}", name_chunk.name, name_chunk.len);
                             }
                             MooChunkType::Bytes => {
                                 // Read the bytes chunk.
@@ -274,7 +258,7 @@ impl MooTestFile {
                                     MooStateType::Initial,
                                     &mut test_reader,
                                     next_chunk.size.into(),
-                                    cpu_type
+                                    cpu_type,
                                 )?;
                                 have_initial_state = true;
                             }
@@ -283,7 +267,7 @@ impl MooTestFile {
                                     MooStateType::Final,
                                     &mut test_reader,
                                     next_chunk.size.into(),
-                                    cpu_type
+                                    cpu_type,
                                 )?;
                                 have_final_state = true;
                             }
@@ -313,8 +297,7 @@ impl MooTestFile {
                                 exception = Some(exception_chunk);
                             }
                             MooChunkType::GeneratorMetadata => {
-                                let gen_metadata_chunk =
-                                    MooTestGenMetadata::read(&mut test_reader)?;
+                                let gen_metadata_chunk = MooTestGenMetadata::read(&mut test_reader)?;
                                 gen_metadata = Some(gen_metadata_chunk);
                             }
                             _ => {
@@ -324,8 +307,7 @@ impl MooTestFile {
                                     next_chunk.size
                                 );
                                 // Skip the chunk by advancing reader.
-                                test_reader
-                                    .seek(std::io::SeekFrom::Current(next_chunk.size as i64))?;
+                                test_reader.seek(std::io::SeekFrom::Current(next_chunk.size as i64))?;
                             }
                         }
                     }
@@ -363,6 +345,7 @@ impl MooTestFile {
             s_type,
             regs: MooRegisters::default_opt(cpu_type),
             queue: Vec::new(),
+            ea: None,
             ram: MooRamEntries {
                 entry_count: 0,
                 entries: Vec::new(),
@@ -393,7 +376,8 @@ impl MooTestFile {
                 return if have_regs && have_ram {
                     // RAM and registers are mandatory, queue is optional.
                     Ok(new_state)
-                } else {
+                }
+                else {
                     Err(binrw::Error::Custom {
                         pos: reader.stream_position().unwrap_or(0),
                         err: Box::new(MooError::ParseError(
@@ -430,10 +414,7 @@ impl MooTestFile {
                     have_queue = true;
                 }
                 _ => {
-                    log::warn!(
-                        "Unexpected chunk type in test state: {:?}",
-                        next_chunk.chunk_type
-                    );
+                    log::warn!("Unexpected chunk type in test state: {:?}", next_chunk.chunk_type);
                     // Skip the chunk by advancing reader.
                     reader.seek(std::io::SeekFrom::Current(next_chunk.size as i64))?;
                 }
@@ -446,10 +427,10 @@ impl MooTestFile {
         MooChunkType::FileHeader.write(
             writer,
             &MooFileHeader {
-                version: self.version,
-                reserved: [0; 3],
+                version:    self.version,
+                reserved:   [0; 3],
                 test_count: self.tests.len() as u32,
-                cpu_name: self.arch.clone().into_bytes()[0..4]
+                cpu_name:   self.arch.clone().into_bytes()[0..4]
                     .try_into()
                     .expect("CPU Name must be 4 chars long"),
             },
@@ -474,14 +455,14 @@ impl MooTestFile {
 
             // Write the name chunk.
             let name_chunk = MooNameChunk {
-                len: test.name.len() as u32,
+                len:  test.name.len() as u32,
                 name: test.name.clone(),
             };
             MooChunkType::Name.write(&mut test_buffer, &name_chunk)?;
 
             // Write the bytes chunk.
             let bytes_chunk = MooBytesChunk {
-                len: test.bytes.len() as u32,
+                len:   test.bytes.len() as u32,
                 bytes: test.bytes.clone(),
             };
             MooChunkType::Bytes.write(&mut test_buffer, &bytes_chunk)?;
