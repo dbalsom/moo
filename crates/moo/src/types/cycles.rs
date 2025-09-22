@@ -114,7 +114,7 @@ impl MooCycleStatePrinter {
         match cpu_width {
             MooCpuWidth::Eight => MooDataWidth::EightLow,
             MooCpuWidth::Sixteen => {
-                if (self.address_latch & 1 != 0) && (self.state.pins0 & MooCycleState::PIN_ALE == 0) {
+                if ((self.address_latch & 1) != 0) && (self.state.pins0 & MooCycleState::PIN_BHE == 0) {
                     MooDataWidth::EightHigh
                 }
                 else if self.state.pins0 & MooCycleState::PIN_BHE == 0 {
