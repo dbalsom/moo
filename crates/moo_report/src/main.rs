@@ -20,27 +20,27 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-
 use chrono::Local;
 use clap::Parser;
 use flate2::read::GzDecoder;
-use plotly::{common::Title, layout::Layout, Bar, Pie, Plot, Table};
-
 use plotly::{
-    common::{color::Color as PlotlyColor, Font},
+    common::{color::Color as PlotlyColor, Font, Title},
+    layout::Layout,
     traces::table::{Cells, Header},
+    Bar,
+    Pie,
+    Plot,
+    Table,
 };
+use serde::Serialize;
 use std::{
     collections::{HashMap, HashSet},
     fs::{self, File},
-    io::Read,
+    io::{Read, Write},
     path::{Path, PathBuf},
 };
 use walkdir::WalkDir;
 
-use serde::Serialize;
-
-// ---- import your MOO types (adjust to your module layout as needed) ----
 use moo::{
     prelude::*,
     types::{flags::MooCpuFlag, MooRegister},
@@ -50,7 +50,12 @@ use moo::{
 struct ColorGrid(Vec<Vec<String>>);
 impl PlotlyColor for ColorGrid {}
 
-/// Generate an HTML report from a directory of binary MOO files.
+pub enum ReportFormat {
+    Html,
+    Csv,
+}
+
+// Command-line arguments for CLAP
 #[derive(Parser, Debug)]
 #[command(author, version, about)]
 struct Args {
@@ -64,15 +69,6 @@ struct Args {
     /// Recurse into subdirectories
     #[arg(short = 'r', long)]
     recursive: bool,
-}
-
-fn mnemonic_to_string(bytes: [u8; 8]) -> String {
-    let s = bytes
-        .iter()
-        .take_while(|&&c| c != 0) // stop at first NUL
-        .map(|&c| c as char)
-        .collect::<String>();
-    s.trim_end().to_string()
 }
 
 fn flags_to_string(flags: &[MooCpuFlag]) -> String {
@@ -100,23 +96,39 @@ fn flags_to_string(flags: &[MooCpuFlag]) -> String {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    let mut report_format = ReportFormat::Html;
+    if let Some(extension) = args.output.extension() {
+        let ext_lower = extension.to_ascii_lowercase();
+
+        if ext_lower == "csv" {
+            report_format = ReportFormat::Csv;
+        }
+        else if ext_lower == "html" || ext_lower == "htm" {
+            report_format = ReportFormat::Html;
+        }
+        else {
+            eprintln!("Warning: unrecognized output extension '{}'.", ext_lower.display());
+            std::process::exit(1);
+        }
+    }
+
     env_logger::init();
 
-    // 1) gather files
+    // 1) Collect MOO files
     let files = collect_moo_files(&args.input_dir, args.recursive)?;
     if files.is_empty() {
         fs::write(&args.output, empty_report_html(&args.input_dir))?;
-        println!("No MOO files found; wrote {}", args.output.display());
+        eprintln!("No MOO files found; wrote {}", args.output.display());
         return Ok(());
     }
 
-    // 2) read & calc stats
+    // 2) Read the MOOs and calculate stats
     let mut rows = Vec::new();
     for path in files {
         match load_moo_file(&path) {
             Ok(mut tf) => {
                 let mnemonic = if let Some(metadata) = tf.metadata() {
-                    mnemonic_to_string(metadata.mnemonic)
+                    metadata.mnemonic()
                 }
                 else {
                     "<unknown>".to_string()
@@ -133,32 +145,42 @@ fn main() -> anyhow::Result<()> {
 
     if rows.is_empty() {
         fs::write(&args.output, empty_report_html(&args.input_dir))?;
-        println!("All reads failed; wrote {}", args.output.display());
+        eprintln!("All reads failed; wrote {}", args.output.display());
         return Ok(());
     }
 
-    // 3) plots
-    let table_plot = build_table_plot(&rows)?;
-    let (_ops_pie, cycles_bar) = build_summary_plots(&rows)?;
-    let dual_pies = build_dual_pies(&rows)?;
+    match report_format {
+        ReportFormat::Html => {
+            // 3) Build the plots
+            let table_plot = build_table_plot(&rows)?;
+            let (_ops_pie, cycles_bar) = build_summary_plots(&rows)?;
+            let dual_pies = build_dual_pies(&rows)?;
 
-    // 4) glue into one HTML
-    let html = compose_html_report(
-        &args.input_dir,
-        &[
-            ("files_table", table_plot),
-            ("dual_pies", dual_pies),
-            ("cycles_bar", cycles_bar),
-        ],
-    );
+            // 4) Compose HTML
+            let html = compose_html_report(
+                &args.input_dir,
+                &[
+                    ("files_table", table_plot),
+                    ("dual_pies", dual_pies),
+                    ("cycles_bar", cycles_bar),
+                ],
+            );
 
-    // 5) write
-    fs::write(&args.output, html)?;
+            // 5) Write out the result
+            fs::write(&args.output, html)?;
+        }
+        ReportFormat::Csv => {
+            let file = File::create(&args.output)?;
+            let wtr = std::io::BufWriter::new(file);
+            let _csv_writer = build_csv(&rows, wtr)?;
+        }
+    }
+
     println!("Report written to {}", args.output.display());
     Ok(())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 struct FileRow {
     file_name: String,
     mnemonic: String,
@@ -180,6 +202,74 @@ struct FileRow {
     exceptions_hist: Vec<(u8, usize)>, // NEW: [(exception, count)] sorted by exception
     exceptions_total: usize,           // NEW: total occurrences for percentage calc
     total_tests: usize,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct FileRowCsv {
+    file_name: String,
+    test_ct: String,
+    mnemonic: String,
+    regs_modified: String,
+    total_cycles: String,
+    min_cycles: String,
+    max_cycles: String,
+    avg_cycles: String,
+    mem_reads: String,
+    mem_writes: String,
+    code_fetches: String,
+    io_reads: String,
+    io_writes: String,
+    flags_modified: String,
+    flags_always_set: String,
+    flags_always_cleared: String,
+    exceptions_seen: String,
+    exceptions_total: String,
+}
+
+impl From<&FileRow> for FileRowCsv {
+    fn from(row: &FileRow) -> Self {
+        Self {
+            file_name: row.file_name.clone(),
+            test_ct: row.total_tests.to_string(),
+            mnemonic: row.mnemonic.clone(),
+            regs_modified: if row.regs_modified.is_empty() {
+                "-".to_string()
+            }
+            else {
+                row.regs_modified.join(",")
+            },
+            total_cycles: row.total_cycles.to_string(),
+            min_cycles: row.min_cycles.to_string(),
+            max_cycles: row.max_cycles.to_string(),
+            avg_cycles: format!("{:.2}", row.avg_cycles),
+            mem_reads: row.mem_reads.to_string(),
+            mem_writes: row.mem_writes.to_string(),
+            code_fetches: row.code_fetches.to_string(),
+            io_reads: row.io_reads.to_string(),
+            io_writes: row.io_writes.to_string(),
+            //wait_states: row.wait_states.to_string(),
+            flags_modified: row.flags_modified.clone(),
+            flags_always_set: row.flags_always_set.clone(),
+            flags_always_cleared: row.flags_always_cleared.clone(),
+            exceptions_seen: if row.exceptions_seen.is_empty() {
+                "-".to_string()
+            }
+            else {
+                row.exceptions_seen
+                    .iter()
+                    .map(|e| e.to_string())
+                    .collect::<Vec<_>>()
+                    .join(",")
+            },
+            exceptions_total: if row.total_tests == 0 {
+                row.exceptions_total.to_string()
+            }
+            else {
+                let pct = (row.exceptions_total as f64) * 100.0 / (row.total_tests as f64);
+                format!("{} ({:.1}%)", row.exceptions_total, pct)
+            },
+        }
+    }
 }
 
 impl FileRow {
@@ -301,6 +391,37 @@ fn estimate_column_widths(cols: &[Vec<String>], min_px: f64, max_px: f64, pad_px
         .collect()
 }
 
+fn build_csv<W: Write>(rows: &[FileRow], writer: W) -> anyhow::Result<csv::Writer<W>> {
+    let mut wtr = csv::WriterBuilder::new().has_headers(false).from_writer(writer);
+
+    wtr.write_record(&[
+        "file",
+        "test_ct",
+        "mnemonic",
+        "regs mod",
+        "total cyc",
+        "min cyc",
+        "max cyc",
+        "avg cyc",
+        "mem reads",
+        "mem writes",
+        "code fetches",
+        "io reads",
+        "io writes",
+        "f modified",
+        "f always set",
+        "f always clr",
+        "exceptions",
+        "exc_total",
+    ])?;
+
+    for row in rows {
+        wtr.serialize(FileRowCsv::from(row))?;
+    }
+    wtr.flush()?;
+    Ok(wtr)
+}
+
 fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
     let file_names: Vec<String> = rows.iter().map(|r| r.file_name.clone()).collect();
     let mnemonics: Vec<String> = rows.iter().map(|r| r.mnemonic.clone()).collect();
@@ -352,7 +473,6 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
         })
         .collect();
 
-    // --- header (unchanged except columns) ---
     let header = Header::new(vec![
         "file",
         "mnemonic",
@@ -375,7 +495,6 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
     .fill(Fill::new().color("rgba(230,230,230,1.0)"))
     .font(Font::new().color("black").size(14)); // black text, bigger font
 
-    // --- cells data ---
     let cols: Vec<Vec<String>> = vec![
         file_names,
         mnemonics,
@@ -423,16 +542,10 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
     use plotly::traces::table::Fill;
     let cells = Cells::new(cols).fill(Fill::new().color(ColorGrid(fill_grid)));
 
-    // .align(
-    //         vec!["left", "left", "right","right","right","right",
-    //                     "right","right","right","right","right","right",
-    //                     "left","right"]); // optional: pack numbers tighter
-
-    // --- plot/table trace ---
+    // Add table trace to plot.
     let mut plot = Plot::new();
     let table = Table::new(header, cells).name("Per-file stats").column_width(10.0);
     plot.add_trace(table);
-
     plot.set_layout(
         Layout::new()
             .title(Title::with_text("MOO Report — Per-file Statistics"))
@@ -486,7 +599,6 @@ fn build_exceptions_pie(rows: &[FileRow]) -> anyhow::Result<Plot> {
 }
 
 fn build_dual_pies(rows: &[FileRow]) -> anyhow::Result<Plot> {
-    // --- Operation mix (as before) ---
     let (reads, writes, fetches, io_r, io_w, waits) = rows.iter().fold((0, 0, 0, 0, 0, 0), |acc, r| {
         (
             acc.0 + r.mem_reads,
@@ -515,7 +627,7 @@ fn build_dual_pies(rows: &[FileRow]) -> anyhow::Result<Plot> {
         .name("Operation Mix")
         .domain(plotly::common::Domain::new().x(&[0.0, 0.48]).y(&[0.0, 1.0]));
 
-    // --- Exceptions pie (<32 only) ---
+    // Exceptions pie chart - includes only INT 0-31
     use std::collections::HashMap;
     let mut totals: HashMap<u8, usize> = HashMap::new();
     let mut grand_total = 0;
@@ -543,7 +655,7 @@ fn build_dual_pies(rows: &[FileRow]) -> anyhow::Result<Plot> {
         .name("Exceptions")
         .domain(plotly::common::Domain::new().x(&[0.52, 1.0]).y(&[0.0, 1.0]));
 
-    // --- Combined plot ---
+    // Create the combined plot
     let mut plot = Plot::new();
     plot.add_trace(op_pie);
     plot.add_trace(exc_pie);
@@ -558,6 +670,7 @@ fn build_dual_pies(rows: &[FileRow]) -> anyhow::Result<Plot> {
 
 /// Build overall operation-mix pie + per-file cycles bar.
 fn build_summary_plots(rows: &[FileRow]) -> anyhow::Result<(Plot, Plot)> {
+    // Count all bus operation types and accumulate in 'acc'
     let (reads, writes, fetches, io_r, io_w, waits) = rows.iter().fold((0, 0, 0, 0, 0, 0), |acc, r| {
         (
             acc.0 + r.mem_reads,
@@ -569,7 +682,7 @@ fn build_summary_plots(rows: &[FileRow]) -> anyhow::Result<(Plot, Plot)> {
         )
     });
 
-    // pie chart
+    // Bus Operations for pie chart
     let labels = vec![
         "Mem Reads",
         "Mem Writes",
@@ -583,6 +696,7 @@ fn build_summary_plots(rows: &[FileRow]) -> anyhow::Result<(Plot, Plot)> {
         .map(|v| v as f64)
         .collect::<Vec<_>>();
 
+    // Pie chart: overall operation mix
     let mut pie_plot = Plot::new();
     let pie = Pie::new(values).labels(labels).name("Operation Mix");
     pie_plot.add_trace(pie);
@@ -592,7 +706,7 @@ fn build_summary_plots(rows: &[FileRow]) -> anyhow::Result<(Plot, Plot)> {
             .auto_size(true),
     );
 
-    // bar chart: total cycles per file
+    // Bar chart: total cycles per file
     let x = rows.iter().map(|r| r.file_name.clone()).collect::<Vec<_>>();
     let y = rows.iter().map(|r| r.total_cycles as f64).collect::<Vec<_>>();
     let mut bar_plot = Plot::new();

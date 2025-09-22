@@ -22,6 +22,7 @@ plotly = "0.13"
 serde.workspace = true
 env_logger.workspace = true
 log.workspace = true
+csv = "1.1"
 
 # ---- your MOO crate ----
 # adjust the path/name to wherever your library is
