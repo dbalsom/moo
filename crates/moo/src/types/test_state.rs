@@ -21,15 +21,25 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use crate::types::chunks::MooChunkType;
-use crate::types::{MooRamEntries, MooRamEntry, MooRegisters, MooRegistersInit, MooStateType};
-use binrw::BinResult;
 use std::io::{Cursor, Write};
+
+use crate::types::{
+    chunks::MooChunkType,
+    effective_address::MooEffectiveAddress,
+    MooRamEntries,
+    MooRamEntry,
+    MooRegisters,
+    MooRegistersInit,
+    MooStateType,
+};
+
+use binrw::BinResult;
 
 #[derive(Clone, Default)]
 pub struct MooTestState {
     pub s_type: MooStateType,
     pub regs: MooRegisters,
+    pub ea: Option<MooEffectiveAddress>,
     pub queue: Vec<u8>,
     pub ram: MooRamEntries,
 }
@@ -39,12 +49,14 @@ impl MooTestState {
         s_type: MooStateType,
         regs_start: &MooRegistersInit,
         regs_final: Option<&MooRegistersInit>,
+        ea: Option<MooEffectiveAddress>,
         queue: Vec<u8>,
         ram: Vec<MooRamEntry>,
     ) -> Self {
         let regs = if let Some(final_regs) = regs_final {
             MooRegisters::from((regs_start, final_regs))
-        } else {
+        }
+        else {
             MooRegisters::from(regs_start)
         };
 
@@ -55,6 +67,7 @@ impl MooTestState {
         Self {
             s_type,
             regs,
+            ea,
             queue,
             ram: ram_entries,
         }
@@ -70,6 +83,10 @@ impl MooTestState {
 
     pub fn ram(&self) -> &[MooRamEntry] {
         &self.ram.entries
+    }
+
+    pub fn ea(&self) -> Option<&MooEffectiveAddress> {
+        self.ea.as_ref()
     }
 
     pub fn write<W: Write + std::io::Seek>(&self, writer: &mut W) -> BinResult<()> {

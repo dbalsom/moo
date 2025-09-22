@@ -38,6 +38,8 @@ pub enum MooChunkType {
     Bytes,
     #[brw(magic = b"INIT")]
     InitialState,
+    #[brw(magic = b"EA32")]
+    EffectiveAddress32,
     #[brw(magic = b"FINA")]
     FinalState,
     #[brw(magic = b"REGS")]
@@ -101,10 +103,10 @@ pub struct MooChunkHeader {
 #[binrw]
 #[brw(little)]
 pub struct MooFileHeader {
-    pub version: u8,
-    pub reserved: [u8; 3],
+    pub version:    u8,
+    pub reserved:   [u8; 3],
     pub test_count: u32,
-    pub cpu_name: [u8; 4],
+    pub cpu_name:   [u8; 4],
 }
 
 #[derive(Debug)]
@@ -117,7 +119,7 @@ pub struct MooTestChunk {
 #[binrw]
 #[brw(little)]
 pub struct MooNameChunk {
-    pub len: u32,
+    pub len:  u32,
     #[br(count = len)]
     #[br(map = |x: Vec<u8>| String::from_utf8_lossy(&x).to_string())]
     #[bw(map = |x: &String| x.as_bytes().to_vec())]
@@ -128,7 +130,7 @@ pub struct MooNameChunk {
 #[binrw]
 #[brw(little)]
 pub struct MooBytesChunk {
-    pub len: u32,
+    pub len:   u32,
     #[br(count = len)]
     pub bytes: Vec<u8>,
 }

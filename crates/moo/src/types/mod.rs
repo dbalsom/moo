@@ -23,17 +23,17 @@
 
 pub mod chunks;
 pub mod cycles;
+pub mod effective_address;
 pub mod errors;
+pub mod flags;
 pub mod metadata;
 pub mod ram;
 pub mod registers;
 pub mod registers_16;
 pub mod registers_32;
-pub mod test_state;
 pub mod test;
-pub mod flags;
+pub mod test_state;
 
-use std::fmt::Display;
 use binrw::binrw;
 pub use cycles::*;
 pub use metadata::*;
@@ -41,8 +41,9 @@ pub use ram::*;
 pub use registers::*;
 pub use registers_16::*;
 pub use registers_32::*;
-pub use test_state::*;
+use std::fmt::Display;
 pub use test::*;
+pub use test_state::*;
 
 /// [MooCpuType] represents the type of CPU used to produce a test case.
 #[derive(Copy, Clone, Debug, Default)]
@@ -80,9 +81,7 @@ pub enum MooCpuWidth {
 impl From<MooCpuType> for MooCpuWidth {
     fn from(cpu_type: MooCpuType) -> Self {
         match cpu_type {
-            MooCpuType::Intel8088 | MooCpuType::NecV20 | MooCpuType::Intel80188 => {
-                MooCpuWidth::Eight
-            }
+            MooCpuType::Intel8088 | MooCpuType::NecV20 | MooCpuType::Intel80188 => MooCpuWidth::Eight,
             _ => MooCpuWidth::Sixteen,
         }
     }
@@ -129,7 +128,7 @@ impl Display for MooBusState {
     }
 }
 
-#[derive (Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum MooIvtOrder {
     ReadFirst,
     PushFirst,
@@ -171,7 +170,6 @@ impl TryFrom<u8> for MooTState {
 }
 
 impl MooCpuType {
-
     pub fn bus_chr_width(&self) -> usize {
         use MooCpuType::*;
         match self {
@@ -193,21 +191,29 @@ impl MooCpuType {
     pub fn from_str(str: &str) -> Result<MooCpuType, String> {
         if (str == "286 ") || (str == "C286") {
             Ok(MooCpuType::Intel80286)
-        } else if str == "386E" {
+        }
+        else if str == "386E" {
             Ok(MooCpuType::Intel80386Ex)
-        } else if str == "8088" {
+        }
+        else if str == "8088" {
             Ok(MooCpuType::Intel8088)
-        } else if str == "8086" {
+        }
+        else if str == "8086" {
             Ok(MooCpuType::Intel8086)
-        } else if str == "188 " {
+        }
+        else if str == "188 " {
             Ok(MooCpuType::Intel80188)
-        } else if str == "186 " {
+        }
+        else if str == "186 " {
             Ok(MooCpuType::Intel80186)
-        } else if str == "V20 " {
+        }
+        else if str == "V20 " {
             Ok(MooCpuType::NecV20)
-        } else if str == "V30 " {
+        }
+        else if str == "V30 " {
             Ok(MooCpuType::NecV30)
-        } else {
+        }
+        else {
             Err(format!("Unknown CPU type: {:?}", str))
         }
     }
@@ -248,8 +254,8 @@ impl MooCpuType {
     }
 
     pub fn decode_status(&self, status_byte: u8) -> MooBusState {
-        use MooCpuType::*;
         use MooBusState::*;
+        use MooCpuType::*;
         match self {
             Intel80286 => match status_byte & 0x0F {
                 0b0000 => INTA,
@@ -306,7 +312,8 @@ impl MooCpuType {
     pub fn bus_bitness(&self) -> u32 {
         if self.has_16bit_bus() {
             16
-        } else {
+        }
+        else {
             8
         }
     }
@@ -315,7 +322,8 @@ impl MooCpuType {
     pub fn reg_bitness(&self) -> u32 {
         if self.has_32bit_regs() {
             32
-        } else {
+        }
+        else {
             16
         }
     }
@@ -382,5 +390,5 @@ pub struct MooDate {
 #[brw(little)]
 pub struct MooException {
     pub exception_num: u8,
-    pub flag_address: u32,
+    pub flag_address:  u32,
 }

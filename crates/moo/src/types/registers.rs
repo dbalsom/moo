@@ -21,12 +21,21 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+use crate::types::{
+    chunks::MooChunkType,
+    MooCpuType,
+    MooRegisters16,
+    MooRegisters16Init,
+    MooRegisters32,
+    MooRegisters32Init,
+};
 use binrw::binrw;
-use crate::types::{MooCpuType, MooRegisters16, MooRegisters16Init, MooRegisters32, MooRegisters32Init};
-use crate::types::chunks::MooChunkType;
 
-
-#[derive (Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[binrw]
+#[brw(little)]
+#[br(repr = u8)]
+#[bw(repr = u8)]
 pub enum MooRegister {
     AX,
     BX,
@@ -60,32 +69,56 @@ pub enum MooRegister {
     EFLAGS,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
+#[binrw]
+#[brw(little)]
+#[br(repr = u8)]
+#[bw(repr = u8)]
+pub enum MooSegmentRegister {
+    CS,
+    SS,
+    DS,
+    ES,
+    FS,
+    GS,
+}
+
 impl MooRegister {
     pub fn is_32bit(&self) -> bool {
-        matches!(self,
-            MooRegister::EAX | MooRegister::EBX | MooRegister::ECX | MooRegister::EDX |
-            MooRegister::ESI | MooRegister::EDI | MooRegister::EBP | MooRegister::ESP |
-            MooRegister::EIP | MooRegister::EFLAGS | MooRegister::CR0 | MooRegister::CR3 |
-            MooRegister::DR6 | MooRegister::DR7
+        matches!(
+            self,
+            MooRegister::EAX
+                | MooRegister::EBX
+                | MooRegister::ECX
+                | MooRegister::EDX
+                | MooRegister::ESI
+                | MooRegister::EDI
+                | MooRegister::EBP
+                | MooRegister::ESP
+                | MooRegister::EIP
+                | MooRegister::EFLAGS
+                | MooRegister::CR0
+                | MooRegister::CR3
+                | MooRegister::DR6
+                | MooRegister::DR7
         )
     }
 }
 
-#[derive (Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct MooRegisterDiff {
     pub register: MooRegister,
-    pub initial: u32,
-    pub r#final: u32,
+    pub initial:  u32,
+    pub r#final:  u32,
 }
 
 impl MooRegisterDiff {
     pub fn register(&self) -> MooRegister {
         self.register
     }
-
 }
 
-#[derive (Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 #[binrw]
 #[brw(little)]
 pub enum MooRegisters {
@@ -93,7 +126,7 @@ pub enum MooRegisters {
     ThirtyTwo(MooRegisters32),
 }
 
-#[derive (Clone)]
+#[derive(Clone)]
 pub enum MooRegistersInit {
     Sixteen(MooRegisters16Init),
     ThirtyTwo(MooRegisters32Init),
@@ -128,7 +161,7 @@ impl From<(&MooRegistersInit, &MooRegistersInit)> for MooRegisters {
     }
 }
 
-impl From<&MooRegistersInit > for MooRegisters {
+impl From<&MooRegistersInit> for MooRegisters {
     fn from(init: &MooRegistersInit) -> Self {
         match init {
             MooRegistersInit::Sixteen(regs) => MooRegisters::Sixteen(MooRegisters16::from(regs)),
