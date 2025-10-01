@@ -81,10 +81,9 @@ impl MooTest {
         }
     }
 
-    pub fn exception(&self) -> Option<&MooException> {
-        self.exception.as_ref()
+    pub fn name(&self) -> &str {
+        &self.name
     }
-
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
@@ -96,6 +95,16 @@ impl MooTest {
     }
     pub fn initial_mem_state(&self) -> &MooRamEntries {
         &self.initial_state.ram
+    }
+    pub fn final_mem_state(&self) -> &MooRamEntries {
+        &self.final_state.ram
+    }
+    pub fn cycles(&self) -> &[MooCycleState] {
+        &self.cycles
+    }
+
+    pub fn exception(&self) -> Option<&MooException> {
+        self.exception.as_ref()
     }
 
     pub fn compare(&self, other: &MooTest) -> MooComparison {
