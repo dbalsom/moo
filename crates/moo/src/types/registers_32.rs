@@ -1,16 +1,15 @@
-
 use std::fmt::Display;
 
+use crate::types::MooCpuType;
 use binrw::binrw;
-use crate::types::{MooCpuType};
 
 #[derive(Clone)]
 #[binrw]
 #[brw(little)]
 pub struct MooDescriptor32 {
     pub access: u32,
-    pub base: u32,
-    pub limit: u32,
+    pub base:   u32,
+    pub limit:  u32,
 }
 
 impl Display for MooDescriptor32 {
@@ -48,9 +47,7 @@ impl Display for MooDescriptor32 {
 #[derive(Clone)]
 #[binrw]
 #[brw(little)]
-pub struct MooDescriptors32 {
-
-}
+pub struct MooDescriptors32 {}
 
 #[derive(Clone)]
 pub struct MooRegisters32Init {
@@ -76,7 +73,7 @@ pub struct MooRegisters32Init {
     pub eflags: u32,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[binrw]
 #[brw(little)]
 pub struct MooRegisters32 {
@@ -636,7 +633,6 @@ impl MooRegisters32 {
     }
 }
 
-
 pub struct MooRegisters32Printer<'a> {
     pub regs: &'a MooRegisters32,
     pub cpu_type: MooCpuType,
@@ -648,10 +644,12 @@ macro_rules! diff_chr {
         if let Some(d) = $self.diff {
             if $self.regs.$reg != d.$reg {
                 '*'
-            } else {
+            }
+            else {
                 ' '
             }
-        } else {
+        }
+        else {
             ' '
         }
     };

@@ -118,7 +118,7 @@ impl MooRegisterDiff {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[binrw]
 #[brw(little)]
 pub enum MooRegisters {

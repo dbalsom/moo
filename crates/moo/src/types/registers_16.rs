@@ -23,58 +23,58 @@
 
 use std::fmt::Display;
 
-use crate::types::{MooCpuType};
+use crate::types::MooCpuType;
 use binrw::binrw;
 
 #[derive(Clone)]
 pub struct MooRegisters16Init {
-    pub ax: u16,
-    pub bx: u16,
-    pub cx: u16,
-    pub dx: u16,
-    pub cs: u16,
-    pub ss: u16,
-    pub ds: u16,
-    pub es: u16,
-    pub sp: u16,
-    pub bp: u16,
-    pub si: u16,
-    pub di: u16,
-    pub ip: u16,
+    pub ax:    u16,
+    pub bx:    u16,
+    pub cx:    u16,
+    pub dx:    u16,
+    pub cs:    u16,
+    pub ss:    u16,
+    pub ds:    u16,
+    pub es:    u16,
+    pub sp:    u16,
+    pub bp:    u16,
+    pub si:    u16,
+    pub di:    u16,
+    pub ip:    u16,
     pub flags: u16,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[binrw]
 #[brw(little)]
 pub struct MooRegisters16 {
-    reg_mask: u16,
+    reg_mask:  u16,
     #[brw(if(reg_mask & 0x0001 != 0))]
-    pub ax: u16,
+    pub ax:    u16,
     #[brw(if(reg_mask & 0x0002 != 0))]
-    pub bx: u16,
+    pub bx:    u16,
     #[brw(if(reg_mask & 0x0004 != 0))]
-    pub cx: u16,
+    pub cx:    u16,
     #[brw(if(reg_mask & 0x0008 != 0))]
-    pub dx: u16,
+    pub dx:    u16,
     #[brw(if(reg_mask & 0x0010 != 0))]
-    pub cs: u16,
+    pub cs:    u16,
     #[brw(if(reg_mask & 0x0020 != 0))]
-    pub ss: u16,
+    pub ss:    u16,
     #[brw(if(reg_mask & 0x0040 != 0))]
-    pub ds: u16,
+    pub ds:    u16,
     #[brw(if(reg_mask & 0x0080 != 0))]
-    pub es: u16,
+    pub es:    u16,
     #[brw(if(reg_mask & 0x0100 != 0))]
-    pub sp: u16,
+    pub sp:    u16,
     #[brw(if(reg_mask & 0x0200 != 0))]
-    pub bp: u16,
+    pub bp:    u16,
     #[brw(if(reg_mask & 0x0400 != 0))]
-    pub si: u16,
+    pub si:    u16,
     #[brw(if(reg_mask & 0x0800 != 0))]
-    pub di: u16,
+    pub di:    u16,
     #[brw(if(reg_mask & 0x1000 != 0))]
-    pub ip: u16,
+    pub ip:    u16,
     #[brw(if(reg_mask & 0x2000 != 0))]
     pub flags: u16,
 }
@@ -429,10 +429,12 @@ macro_rules! diff_chr {
         if let Some(d) = $self.diff {
             if $self.regs.$reg != d.$reg {
                 '*'
-            } else {
+            }
+            else {
                 ' '
             }
-        } else {
+        }
+        else {
             ' '
         }
     };
