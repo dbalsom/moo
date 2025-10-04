@@ -26,6 +26,7 @@ use std::io::{Cursor, Read, Seek, Write};
 
 use crate::types::{
     chunks::{MooBytesChunk, MooChunkHeader, MooChunkType, MooFileHeader, MooHashChunk, MooNameChunk, MooTestChunk},
+    effective_address::MooEffectiveAddress,
     errors::MooError,
     test_state::MooTestState,
     MooCpuType,
@@ -412,6 +413,10 @@ impl MooTestFile {
                     let queue = MooBytesChunk::read(reader)?;
                     new_state.queue = queue.bytes;
                     have_queue = true;
+                }
+                MooChunkType::EffectiveAddress32 => {
+                    let ea = MooEffectiveAddress::read(reader)?;
+                    new_state.ea = Some(ea);
                 }
                 _ => {
                     log::warn!("Unexpected chunk type in test state: {:?}", next_chunk.chunk_type);

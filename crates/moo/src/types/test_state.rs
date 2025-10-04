@@ -103,6 +103,11 @@ impl MooTestState {
             MooChunkType::QueueState.write(&mut state_buffer, &self.queue)?;
         }
 
+        // Write the EA chunk, if present.
+        if let Some(ea) = &self.ea {
+            MooChunkType::EffectiveAddress32.write(&mut state_buffer, ea)?;
+        }
+
         // Write the RAM chunk.
         MooChunkType::Ram.write(&mut state_buffer, &self.ram)?;
 
