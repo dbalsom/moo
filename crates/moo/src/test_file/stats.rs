@@ -27,17 +27,25 @@ use crate::{
 };
 use std::collections::HashSet;
 
+#[derive(Clone, Default)]
+pub struct BusOpStats {
+    pub total: usize,
+    pub min:   usize,
+    pub max:   usize,
+}
+
+#[derive(Clone, Default)]
 pub struct MooTestFileStats {
     pub test_count: usize,
     pub total_cycles: usize,
     pub min_cycles: usize,
     pub max_cycles: usize,
     pub avg_cycles: f64,
-    pub mem_reads: usize,
-    pub mem_writes: usize,
-    pub code_fetches: usize,
-    pub io_reads: usize,
-    pub io_writes: usize,
+    pub mem_reads: BusOpStats,
+    pub mem_writes: BusOpStats,
+    pub code_fetches: BusOpStats,
+    pub io_reads: BusOpStats,
+    pub io_writes: BusOpStats,
     pub wait_states: usize,
 
     pub exceptions_seen: Vec<u8>,
@@ -55,15 +63,37 @@ fn into_sorted_vec<T: Ord>(set: HashSet<T>) -> Vec<T> {
     v
 }
 
+macro_rules! collect_bus_stats {
+    ($self:ident, $new_stats:ident, $field:ident, $iter:expr) => {{
+        let iter = $iter;
+
+        $new_stats.$field.total = iter.clone().count();
+
+        let min_max: Option<(usize, usize)> = iter.fold(None, |acc, n| {
+            Some(match acc {
+                None => (n, n),
+                Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            })
+        });
+
+        if let Some((min, max)) = min_max {
+            $new_stats.$field.min = min;
+            $new_stats.$field.max = max;
+        }
+    }};
+}
+
 impl MooTestFile {
     pub fn calc_stats(&mut self) -> MooTestFileStats {
         let test_ct = self.tests.len();
 
-        let total_cycles = self.tests.iter().map(|t| t.cycles.len()).sum();
-        let min_cycles = self.tests.iter().map(|t| t.cycles.len()).min().unwrap_or(0);
-        let max_cycles = self.tests.iter().map(|t| t.cycles.len()).max().unwrap_or(0);
-        let avg_cycles = if test_ct > 0 {
-            total_cycles as f64 / test_ct as f64
+        let mut new_stats = MooTestFileStats::default();
+
+        new_stats.total_cycles = self.tests.iter().map(|t| t.cycles.len()).sum();
+        new_stats.min_cycles = self.tests.iter().map(|t| t.cycles.len()).min().unwrap_or(0);
+        new_stats.max_cycles = self.tests.iter().map(|t| t.cycles.len()).max().unwrap_or(0);
+        new_stats.avg_cycles = if test_ct > 0 {
+            new_stats.total_cycles as f64 / test_ct as f64
         }
         else {
             0.0
@@ -78,147 +108,185 @@ impl MooTestFile {
 
         log::debug!("Calculated registers modified: {:?}", registers_modified);
 
-        let (mem_reads, mem_writes, code_fetches, io_reads, io_writes) = if self.arch.contains("386") {
+        if self.arch.contains("386") {
             // Only count read signal on ALE.
-            let mem_reads = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.ale()
-                                && c.bus_state(self.cpu_type) == MooBusState::MEMR
-                                && (c.memory_status & MooCycleState::MRDC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            let mem_reads_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.ale()
+                            && c.bus_state(self.cpu_type) == MooBusState::MEMR
+                            && (c.memory_status & MooCycleState::MRDC_BIT != 0)
+                    })
+                    .count()
+            });
 
-            let mem_writes = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| c.ale() && (c.memory_status & MooCycleState::MWTC_BIT != 0))
-                        .count()
-                })
-                .sum();
+            collect_bus_stats!(self, new_stats, mem_reads, mem_reads_iter);
+            // new_stats.mem_reads.total = mem_reads_iter.count();
+            //
+            // let min_max_reads: Option<(usize, usize)> = mem_reads_iter.clone().fold(None, |acc, n| {
+            //     Some(match acc {
+            //         None => (n, n),
+            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            //     })
+            // });
+            //
+            // if let Some((min_reads, max_reads)) = min_max_reads {
+            //     new_stats.mem_reads.min = min_reads;
+            //     new_stats.mem_reads.max = max_reads;
+            // }
 
-            let code_fetches = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.ale()
-                                && c.is_code_fetch(self.cpu_type)
-                                && (c.memory_status & MooCycleState::MRDC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            let mem_writes_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| c.ale() && (c.memory_status & MooCycleState::MWTC_BIT != 0))
+                    .count()
+            });
 
-            let io_reads = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| c.ale() && (c.io_status & MooCycleState::IORC_BIT != 0))
-                        .count()
-                })
-                .sum();
+            collect_bus_stats!(self, new_stats, mem_reads, mem_writes_iter);
+            // new_stats.mem_writes.total = mem_writes_iter.count();
+            //
+            // let min_max_writes: Option<(usize, usize)> = mem_writes_iter.clone().fold(None, |acc, n| {
+            //     Some(match acc {
+            //         None => (n, n),
+            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            //     })
+            // });
+            //
+            // if let Some((min_writes, max_writes)) = min_max_writes {
+            //     new_stats.mem_writes.min = min_writes;
+            //     new_stats.mem_writes.max = max_writes;
+            // }
 
-            let io_writes = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| c.ale() && (c.io_status & MooCycleState::IOWC_BIT != 0))
-                        .count()
-                })
-                .sum();
+            let code_fetches_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.ale() && c.is_code_fetch(self.cpu_type) && (c.memory_status & MooCycleState::MRDC_BIT != 0)
+                    })
+                    .count()
+            });
 
-            (mem_reads, mem_writes, code_fetches, io_reads, io_writes)
+            collect_bus_stats!(self, new_stats, code_fetches, code_fetches_iter);
+
+            // new_stats.code_fetches.total = code_fetches_iter.count();
+            //
+            // let min_max_fetches: Option<(usize, usize)> = code_fetches_iter.clone().fold(None, |acc, n| {
+            //     Some(match acc {
+            //         None => (n, n),
+            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            //     })
+            // });
+            //
+            // if let Some((min_fetches, max_fetches)) = min_max_fetches {
+            //     new_stats.code_fetches.min = min_fetches;
+            //     new_stats.code_fetches.max = max_fetches;
+            // }
+
+            let io_reads_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| c.ale() && (c.io_status & MooCycleState::IORC_BIT != 0))
+                    .count()
+            });
+            collect_bus_stats!(self, new_stats, io_reads, io_reads_iter);
+
+            // new_stats.io_reads.total = io_reads_iter.count();
+            //
+            // let min_max_io_reads: Option<(usize, usize)> = io_reads_iter.clone().fold(None, |acc, n| {
+            //     Some(match acc {
+            //         None => (n, n),
+            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            //     })
+            // });
+            //
+            // if let Some((min_io_reads, max_io_reads)) = min_max_io_reads {
+            //     new_stats.io_reads.min = min_io_reads;
+            //     new_stats.io_reads.max = max_io_reads;
+            // }
+
+            let io_writes_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| c.ale() && (c.io_status & MooCycleState::IOWC_BIT != 0))
+                    .count()
+            });
+
+            collect_bus_stats!(self, new_stats, io_writes, io_writes_iter);
+            // new_stats.io_writes.total = io_writes_iter.count();
+            //
+            // let min_max_io_writes: Option<(usize, usize)> = io_writes_iter.clone().fold(None, |acc, n| {
+            //     Some(match acc {
+            //         None => (n, n),
+            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
+            //     })
+            // });
+            //
+            // if let Some((min_io_writes, max_io_writes)) = min_max_io_writes {
+            //     new_stats.io_writes.min = min_io_writes;
+            //     new_stats.io_writes.max = max_io_writes;
+            // }
         }
         else {
             // Other CPUs can wait for PASV bus to signal completed read/write.
-            let mem_reads = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.bus_state(self.cpu_type) == MooBusState::PASV
-                                && (c.memory_status & MooCycleState::MRDC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            let mem_reads_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.bus_state(self.cpu_type) == MooBusState::PASV
+                            && (c.memory_status & MooCycleState::MRDC_BIT != 0)
+                    })
+                    .count()
+            });
 
-            let mem_writes = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.bus_state(self.cpu_type) == MooBusState::PASV
-                                && (c.memory_status & MooCycleState::MWTC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            collect_bus_stats!(self, new_stats, mem_reads, mem_reads_iter);
 
-            let code_fetches = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.bus_state(self.cpu_type) == MooBusState::PASV
-                                && (c.memory_status & MooCycleState::MRDC_BIT != 0)
-                                && c.is_code_fetch(self.cpu_type)
-                        })
-                        .count()
-                })
-                .sum();
+            let mem_writes_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.bus_state(self.cpu_type) == MooBusState::PASV
+                            && (c.memory_status & MooCycleState::MWTC_BIT != 0)
+                    })
+                    .count()
+            });
 
-            let io_reads = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.bus_state(self.cpu_type) == MooBusState::PASV
-                                && (c.io_status & MooCycleState::IORC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            collect_bus_stats!(self, new_stats, mem_writes, mem_writes_iter);
 
-            let io_writes = self
-                .tests
-                .iter()
-                .map(|t| {
-                    t.cycles
-                        .iter()
-                        .filter(|c| {
-                            c.bus_state(self.cpu_type) == MooBusState::PASV
-                                && (c.io_status & MooCycleState::IOWC_BIT != 0)
-                        })
-                        .count()
-                })
-                .sum();
+            let code_fetches_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.bus_state(self.cpu_type) == MooBusState::PASV
+                            && (c.memory_status & MooCycleState::MRDC_BIT != 0)
+                            && c.is_code_fetch(self.cpu_type)
+                    })
+                    .count()
+            });
 
-            (mem_reads, mem_writes, code_fetches, io_reads, io_writes)
+            collect_bus_stats!(self, new_stats, code_fetches, code_fetches_iter);
+
+            let io_reads_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.bus_state(self.cpu_type) == MooBusState::PASV && (c.io_status & MooCycleState::IORC_BIT != 0)
+                    })
+                    .count()
+            });
+
+            collect_bus_stats!(self, new_stats, io_reads, io_reads_iter);
+
+            let io_writes_iter = self.tests.iter().map(|t| {
+                t.cycles
+                    .iter()
+                    .filter(|c| {
+                        c.bus_state(self.cpu_type) == MooBusState::PASV && (c.io_status & MooCycleState::IOWC_BIT != 0)
+                    })
+                    .count()
+            });
+
+            collect_bus_stats!(self, new_stats, io_writes, io_writes_iter);
         };
 
         let exceptions_seen = self
@@ -250,25 +318,15 @@ impl MooTestFile {
 
         let flags_modified: HashSet<_> = flags_set.union(&flags_cleared).cloned().collect();
 
-        MooTestFileStats {
-            test_count: test_ct,
-            total_cycles,
-            min_cycles,
-            max_cycles,
-            avg_cycles,
-            mem_reads,
-            mem_writes,
-            code_fetches,
-            io_reads,
-            io_writes,
-            wait_states: 0,
-            exceptions_seen,
-            registers_modified: into_sorted_vec(registers_modified),
-            flags_set: into_sorted_vec(flags_set),
-            flags_cleared: into_sorted_vec(flags_cleared),
-            flags_modified: into_sorted_vec(flags_modified),
-            flags_always_set: into_sorted_vec(flags_always_set),
-            flags_always_cleared: into_sorted_vec(flags_always_cleared),
-        }
+        new_stats.test_count = test_ct;
+        new_stats.exceptions_seen = exceptions_seen;
+        new_stats.registers_modified = into_sorted_vec(registers_modified);
+        new_stats.flags_set = into_sorted_vec(flags_set);
+        new_stats.flags_cleared = into_sorted_vec(flags_cleared);
+        new_stats.flags_modified = into_sorted_vec(flags_modified);
+        new_stats.flags_always_set = into_sorted_vec(flags_always_set);
+        new_stats.flags_always_cleared = into_sorted_vec(flags_always_cleared);
+
+        new_stats
     }
 }
