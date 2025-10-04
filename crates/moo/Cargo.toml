@@ -21,6 +21,9 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 log = "0.4.21"
 thiserror = "2.0"
 
+[dev-dependencies]
+tempfile = "3.23.0"
+
 [features]
 default = ["serde"]
 use_serde = ["serde"]
