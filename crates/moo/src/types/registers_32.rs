@@ -631,6 +631,93 @@ impl MooRegisters32 {
         }
         true
     }
+
+    pub fn delta(&self, other: &MooRegisters32) -> MooRegisters32 {
+        let mut delta_regs = MooRegisters32::default();
+
+        if self.cr0 != other.cr0 {
+            delta_regs.reg_mask |= MooRegisters32::CR0_MASK;
+            delta_regs.cr0 = other.cr0;
+        }
+        if self.cr3 != other.cr3 {
+            delta_regs.reg_mask |= MooRegisters32::CR3_MASK;
+            delta_regs.cr3 = other.cr3;
+        }
+        if self.eax != other.eax {
+            delta_regs.reg_mask |= MooRegisters32::EAX_MASK;
+            delta_regs.eax = other.eax;
+            }
+        if self.ebx != other.ebx {
+            delta_regs.reg_mask |= MooRegisters32::EBX_MASK;
+            delta_regs.ebx = other.ebx;
+        }
+        if self.ecx != other.ecx {
+            delta_regs.reg_mask |= MooRegisters32::ECX_MASK;
+            delta_regs.ecx = other.ecx;
+        }
+        if self.edx != other.edx {
+            delta_regs.reg_mask |= MooRegisters32::EDX_MASK;
+            delta_regs.edx = other.edx;
+        }
+        if self.esi != other.esi {
+            delta_regs.reg_mask |= MooRegisters32::ESI_MASK;
+            delta_regs.esi = other.esi;
+        }
+        if self.edi != other.edi {
+            delta_regs.reg_mask |= MooRegisters32::EDI_MASK;
+            delta_regs.edi = other.edi;
+        }
+        if self.ebp != other.ebp {
+            delta_regs.reg_mask |= MooRegisters32::EBP_MASK;
+            delta_regs.ebp = other.ebp;
+        }
+        if self.esp != other.esp {
+            delta_regs.reg_mask |= MooRegisters32::ESP_MASK;
+            delta_regs.esp = other.esp;
+        }
+        if self.cs != other.cs {
+            delta_regs.reg_mask |= MooRegisters32::CS_MASK;
+            delta_regs.cs = other.cs;
+        }
+        if self.ds != other.ds {
+            delta_regs.reg_mask |= MooRegisters32::DS_MASK;
+            delta_regs.ds = other.ds;
+        }
+        if self.es != other.es {
+            delta_regs.reg_mask |= MooRegisters32::ES_MASK;
+            delta_regs.es = other.es;
+        }
+        if self.fs != other.fs {
+            delta_regs.reg_mask |= MooRegisters32::FS_MASK;
+            delta_regs.fs = other.fs;
+        }
+        if self.gs != other.gs {
+            delta_regs.reg_mask |= MooRegisters32::GS_MASK;
+            delta_regs.gs = other.gs;
+        }
+        if self.ss != other.ss {
+            delta_regs.reg_mask |= MooRegisters32::SS_MASK;
+            delta_regs.ss = other.ss;
+        }
+        if self.eip != other.eip {
+            delta_regs.reg_mask |= MooRegisters32::EIP_MASK;
+            delta_regs.eip = other.eip;
+        }
+        if self.eflags != other.eflags {
+            delta_regs.reg_mask |= MooRegisters32::EFLAGS_MASK;
+            delta_regs.eflags = other.eflags;
+        }
+        if self.dr6 != other.dr6 {
+            delta_regs.reg_mask |= MooRegisters32::DR6_MASK;
+            delta_regs.dr6 = other.dr6;
+        }
+        if self.dr7 != other.dr7 {
+            delta_regs.reg_mask |= MooRegisters32::DR7_MASK;
+            delta_regs.dr7 = other.dr7;
+        }
+
+        delta_regs
+    }
 }
 
 pub struct MooRegisters32Printer<'a> {

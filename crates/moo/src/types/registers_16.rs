@@ -222,6 +222,23 @@ impl MooRegisters16 {
 
     pub const SHUTDOWN_BIT: u16 = 0x8000; // If set, indicates the CPU was shutdown.
 
+    pub const AX_MASK: u16 = 0x0001; // AX register mask
+    pub const BX_MASK: u16 = 0x0002; // BX register mask
+    pub const CX_MASK: u16 = 0x0004; // CX register mask
+    pub const DX_MASK: u16 = 0x0008; // DX register mask
+
+    pub const CS_MASK: u16 = 0x0010; // CS register mask
+    pub const SS_MASK: u16 = 0x0020; // SS register mask
+    pub const DS_MASK: u16 = 0x0040; // DS register mask
+    pub const ES_MASK: u16 = 0x0080; // ES register mask
+    pub const SP_MASK: u16 = 0x0100; // SP register mask
+    pub const BP_MASK: u16 = 0x0200; // BP register mask
+    pub const SI_MASK: u16 = 0x0400; // SI register mask
+    pub const DI_MASK: u16 = 0x0800; // DI register mask
+
+    pub const IP_MASK: u16 = 0x1000; // IP register mask
+    pub const FLAGS_MASK: u16 = 0x2000; // FLAGS register mask
+
     pub const FLAG_CARRY: u16       = 0b0000_0000_0000_0001;
     pub const FLAG_RESERVED1: u16   = 0b0000_0000_0000_0010;
     pub const FLAG_PARITY: u16      = 0b0000_0000_0000_0100;
@@ -243,163 +260,163 @@ impl MooRegisters16 {
     pub fn set_shutdown(&mut self, state: bool) {
         if state {
             // Clear out all other bits.
-            self.reg_mask = MooRegisters16::SHUTDOWN_BIT;
+            self.reg_mask = Self::SHUTDOWN_BIT;
         }
         else {
-            self.reg_mask &= !MooRegisters16::SHUTDOWN_BIT;
+            self.reg_mask &= !Self::SHUTDOWN_BIT;
         }
     }
 
     pub fn set_ax(&mut self, value: u16) {
-        self.reg_mask |= 0x0001;
+        self.reg_mask |= Self::AX_MASK;
         self.ax = value;
     }
     pub fn set_bx(&mut self, value: u16) {
-        self.reg_mask |= 0x0002;
+        self.reg_mask |= Self::BX_MASK;
         self.bx = value;
     }
     pub fn set_cx(&mut self, value: u16) {
-        self.reg_mask |= 0x0004;
+        self.reg_mask |= Self::CX_MASK;
         self.cx = value;
     }
     pub fn set_dx(&mut self, value: u16) {
-        self.reg_mask |= 0x0008;
+        self.reg_mask |= Self::DX_MASK;
         self.dx = value;
     }
     pub fn set_cs(&mut self, value: u16) {
-        self.reg_mask |= 0x0010;
+        self.reg_mask |= Self::CS_MASK;
         self.cs = value;
     }
     pub fn set_ss(&mut self, value: u16) {
-        self.reg_mask |= 0x0020;
+        self.reg_mask |= Self::SS_MASK;
         self.ss = value;
     }
     pub fn set_ds(&mut self, value: u16) {
-        self.reg_mask |= 0x0040;
+        self.reg_mask |= Self::DS_MASK;
         self.ds = value;
     }
     pub fn set_es(&mut self, value: u16) {
-        self.reg_mask |= 0x0080;
+        self.reg_mask |= Self::ES_MASK;
         self.es = value;
     }
     pub fn set_sp(&mut self, value: u16) {
-        self.reg_mask |= 0x0100;
+        self.reg_mask |= Self::SP_MASK;
         self.sp = value;
     }
     pub fn set_bp(&mut self, value: u16) {
-        self.reg_mask |= 0x0200;
+        self.reg_mask |= Self::BP_MASK;
         self.bp = value;
     }
     pub fn set_si(&mut self, value: u16) {
-        self.reg_mask |= 0x0400;
+        self.reg_mask |= Self::SI_MASK;
         self.si = value;
     }
     pub fn set_di(&mut self, value: u16) {
-        self.reg_mask |= 0x0800;
+        self.reg_mask |= Self::DI_MASK;
         self.di = value;
     }
     pub fn set_ip(&mut self, value: u16) {
-        self.reg_mask |= 0x1000;
+        self.reg_mask |= Self::IP_MASK;
         self.ip = value;
     }
     pub fn set_flags(&mut self, value: u16) {
-        self.reg_mask |= 0x2000;
+        self.reg_mask |= Self::FLAGS_MASK;
         self.flags = value;
     }
 
     pub fn ax(&self) -> Option<u16> {
-        if self.reg_mask & 0x0001 != 0 {
+        if self.reg_mask & Self::AX_MASK != 0 {
             Some(self.ax)
         } else {
             None
         }
     }
     pub fn bx(&self) -> Option<u16> {
-        if self.reg_mask & 0x0002 != 0 {
+        if self.reg_mask & Self::BX_MASK != 0 {
             Some(self.bx)
         } else {
             None
         }
     }
     pub fn cx(&self) -> Option<u16> {
-        if self.reg_mask & 0x0004 != 0 {
+        if self.reg_mask & Self::CX_MASK != 0 {
             Some(self.cx)
         } else {
             None
         }
     }
     pub fn dx(&self) -> Option<u16> {
-        if self.reg_mask & 0x0008 != 0 {
+        if self.reg_mask & Self::DX_MASK != 0 {
             Some(self.dx)
         } else {
             None
         }
     }
     pub fn cs(&self) -> Option<u16> {
-        if self.reg_mask & 0x0010 != 0 {
+        if self.reg_mask & Self::CS_MASK != 0 {
             Some(self.cs)
         } else {
             None
         }
     }
     pub fn ss(&self) -> Option<u16> {
-        if self.reg_mask & 0x0020 != 0 {
+        if self.reg_mask & Self::SS_MASK != 0 {
             Some(self.ss)
         } else {
             None
         }
     }
     pub fn ds(&self) -> Option<u16> {
-        if self.reg_mask & 0x0040 != 0 {
+        if self.reg_mask & Self::DS_MASK != 0 {
             Some(self.ds)
         } else {
             None
         }
     }
     pub fn es(&self) -> Option<u16> {
-        if self.reg_mask & 0x0080 != 0 {
+        if self.reg_mask & Self::ES_MASK != 0 {
             Some(self.es)
         } else {
             None
         }
     }
     pub fn sp(&self) -> Option<u16> {
-        if self.reg_mask & 0x0100 != 0 {
+        if self.reg_mask & Self::SP_MASK != 0 {
             Some(self.sp)
         } else {
             None
         }
     }
     pub fn bp(&self) -> Option<u16> {
-        if self.reg_mask & 0x0200 != 0 {
+        if self.reg_mask & Self::BP_MASK != 0 {
             Some(self.bp)
         } else {
             None
         }
     }
     pub fn si(&self) -> Option<u16> {
-        if self.reg_mask & 0x0400 != 0 {
+        if self.reg_mask & Self::SI_MASK != 0 {
             Some(self.si)
         } else {
             None
         }
     }
     pub fn di(&self) -> Option<u16> {
-        if self.reg_mask & 0x0800 != 0 {
+        if self.reg_mask & Self::DI_MASK != 0 {
             Some(self.di)
         } else {
             None
         }
     }
     pub fn ip(&self) -> Option<u16> {
-        if self.reg_mask & 0x1000 != 0 {
+        if self.reg_mask & Self::IP_MASK != 0 {
             Some(self.ip)
         } else {
             None
         }
     }
     pub fn flags(&self) -> Option<u16> {
-        if self.reg_mask & 0x2000 != 0 {
+        if self.reg_mask & Self::FLAGS_MASK != 0 {
             Some(self.flags)
         } else {
             None
@@ -407,7 +424,7 @@ impl MooRegisters16 {
     }
 
     pub fn is_valid(&self) -> bool {
-        if self.reg_mask & 0x2000 != 0 {
+        if self.reg_mask & Self::IP_MASK != 0 {
             // We have flags
             if self.flags & 0x0002 == 0 {
                 // Reserved flag bit 1 cannot be clear
@@ -415,6 +432,71 @@ impl MooRegisters16 {
             }
         }
         true
+    }
+
+    pub fn delta(&self, other: &MooRegisters16) -> MooRegisters16 {
+        let mut reg_mask = 0u16;
+
+        let mut delta_regs = MooRegisters16::default();
+
+        if self.ax != other.ax {
+            reg_mask |= Self::AX_MASK;
+            delta_regs.ax = other.ax;
+        }
+        if self.bx != other.bx {
+            reg_mask |= Self::BX_MASK;
+            delta_regs.bx = other.bx;
+        }
+        if self.cx != other.cx {
+            reg_mask |= Self::CX_MASK;
+            delta_regs.cx = other.cx;
+        }
+        if self.dx != other.dx {
+            reg_mask |= Self::DX_MASK;
+            delta_regs.dx = other.dx;
+        }
+        if self.cs != other.cs {
+            reg_mask |= Self::CS_MASK;
+            delta_regs.cs = other.cs;
+        }
+        if self.ss != other.ss {
+            reg_mask |= Self::SS_MASK;
+            delta_regs.ss = other.ss;
+        }
+        if self.ds != other.ds {
+            reg_mask |= Self::DS_MASK;
+            delta_regs.ds = other.ds;
+        }
+        if self.es != other.es {
+            reg_mask |= Self::ES_MASK;
+            delta_regs.es = other.es;
+        }
+        if self.sp != other.sp {
+            reg_mask |= Self::SP_MASK;
+            delta_regs.sp = other.sp;
+        }
+        if self.bp != other.bp {
+            reg_mask |= Self::BP_MASK;
+            delta_regs.bp = other.bp;
+        }
+        if self.si != other.si {
+            reg_mask |= Self::SI_MASK;
+            delta_regs.si = other.si;
+        }
+        if self.di != other.di {
+            reg_mask |= Self::DI_MASK;
+            delta_regs.di = other.di;
+        }
+        if self.ip != other.ip {
+            reg_mask |= Self::IP_MASK;
+            delta_regs.ip = other.ip;
+        }
+        if self.flags != other.flags {
+            reg_mask |= Self::FLAGS_MASK;
+            delta_regs.flags = other.flags;
+        }
+        delta_regs.reg_mask = reg_mask;
+        delta_regs
     }
 }
 

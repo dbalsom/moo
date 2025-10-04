@@ -197,4 +197,14 @@ impl MooRegisters {
             MooRegisters::ThirtyTwo(regs) => regs.eflags,
         }
     }
+
+    pub fn delta(&self, other: &MooRegisters) -> MooRegisters {
+        match (self, other) {
+            (MooRegisters::Sixteen(regs1), MooRegisters::Sixteen(regs2)) => MooRegisters::Sixteen(regs1.delta(regs2)),
+            (MooRegisters::ThirtyTwo(regs1), MooRegisters::ThirtyTwo(regs2)) => {
+                MooRegisters::ThirtyTwo(regs1.delta(regs2))
+            }
+            _ => panic!("Cannot compare different register types"),
+        }
+    }
 }
