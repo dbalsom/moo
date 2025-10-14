@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use crate::types::MooCpuType;
 use binrw::binrw;
@@ -73,7 +73,7 @@ pub struct MooRegisters32Init {
     pub eflags: u32,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 #[binrw]
 #[brw(little)]
 pub struct MooRegisters32 {
@@ -289,6 +289,73 @@ impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
             dr6: init.1.dr6,
             dr7: init.1.dr7,
         }
+    }
+}
+
+impl Debug for MooRegisters32 {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut mr = fmt.debug_struct("MooRegisters32");
+        if self.reg_mask & MooRegisters32::CR0_MASK != 0 {
+            mr.field("cr0", &format_args!("{:08X}", self.cr0));
+        }
+        if self.reg_mask & MooRegisters32::CR3_MASK != 0 {
+            mr.field("cr3", &format_args!("{:08X}", self.cr3));
+        }
+        if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
+            mr.field("eax", &format_args!("{:08X}", self.eax));
+        }
+        if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
+            mr.field("ebx", &format_args!("{:08X}", self.ebx));
+        }
+        if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
+            mr.field("ecx", &format_args!("{:08X}", self.ecx));
+        }
+        if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
+            mr.field("edx", &format_args!("{:08X}", self.edx));
+        }
+        if self.reg_mask & MooRegisters32::ESI_MASK != 0 {
+            mr.field("esi", &format_args!("{:08X}", self.esi));
+        }
+        if self.reg_mask & MooRegisters32::EDI_MASK != 0 {
+            mr.field("edi", &format_args!("{:08X}", self.edi));
+        }
+        if self.reg_mask & MooRegisters32::EBP_MASK != 0 {
+            mr.field("ebp", &format_args!("{:08X}", self.ebp));
+        }
+        if self.reg_mask & MooRegisters32::ESP_MASK != 0 {
+            mr.field("esp", &format_args!("{:08X}", self.esp));
+        }
+        if self.reg_mask & MooRegisters32::CS_MASK != 0 {
+            mr.field("cs", &format_args!("{:04X}", self.cs));
+        }
+        if self.reg_mask & MooRegisters32::DS_MASK != 0 {
+            mr.field("ds", &format_args!("{:04X}", self.ds));
+        }
+        if self.reg_mask & MooRegisters32::ES_MASK != 0 {
+            mr.field("es", &format_args!("{:04X}", self.es));
+        }
+        if self.reg_mask & MooRegisters32::FS_MASK != 0 {
+            mr.field("fs", &format_args!("{:04X}", self.fs));
+        }
+        if self.reg_mask & MooRegisters32::GS_MASK != 0 {
+            mr.field("gs", &format_args!("{:04X}", self.gs));
+        }
+        if self.reg_mask & MooRegisters32::SS_MASK != 0 {
+            mr.field("ss", &format_args!("{:04X}", self.ss));
+        }
+        if self.reg_mask & MooRegisters32::EIP_MASK != 0 {
+            mr.field("eip", &format_args!("{:08X}", self.eip));
+        }
+        if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+            mr.field("eflags", &format_args!("{:08X}", self.eflags));
+        }
+        if self.reg_mask & MooRegisters32::DR6_MASK != 0 {
+            mr.field("dr6", &format_args!("{:08X}", self.dr6));
+        }
+        if self.reg_mask & MooRegisters32::DR7_MASK != 0 {
+            mr.field("dr7", &format_args!("{:08X}", self.dr7));
+        }
+        mr.finish()
     }
 }
 
