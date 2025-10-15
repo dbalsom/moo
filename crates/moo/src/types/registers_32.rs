@@ -713,7 +713,7 @@ impl MooRegisters32 {
         if self.eax != other.eax {
             delta_regs.reg_mask |= MooRegisters32::EAX_MASK;
             delta_regs.eax = other.eax;
-            }
+        }
         if self.ebx != other.ebx {
             delta_regs.reg_mask |= MooRegisters32::EBX_MASK;
             delta_regs.ebx = other.ebx;
