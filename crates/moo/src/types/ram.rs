@@ -32,6 +32,16 @@ pub struct MooRamEntries {
     pub entries: Vec<MooRamEntry>,
 }
 
+impl MooRamEntries {
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+
+    pub fn entries(&self) -> &[MooRamEntry] {
+        &self.entries
+    }
+}
+
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 #[binrw]
 #[brw(little)]
