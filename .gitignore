@@ -97,5 +97,8 @@ http-client.private.env.json
 .idea/.cache/.Apifox_Helper
 .idea/ApifoxUploaderProjectSetting.xml
 
+# ai garbage
+.idea/copilot*
+
 # Report output
 moo_*.html
