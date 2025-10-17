@@ -20,16 +20,18 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-
 use crate::types::{
     chunks::MooChunkType,
     MooCpuType,
     MooRegisters16,
     MooRegisters16Init,
+    MooRegisters16Printer,
     MooRegisters32,
     MooRegisters32Init,
+    MooRegisters32Printer,
 };
 use binrw::binrw;
+use std::fmt::Display;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[binrw]
@@ -205,6 +207,36 @@ impl MooRegisters {
                 MooRegisters::ThirtyTwo(regs1.delta(regs2))
             }
             _ => panic!("Cannot compare different register types"),
+        }
+    }
+}
+
+pub struct MooRegistersPrinter<'a> {
+    pub regs: &'a MooRegisters,
+    pub cpu_type: MooCpuType,
+    pub diff: Option<&'a MooRegisters>,
+    pub indent: u32,
+}
+
+impl Display for MooRegistersPrinter<'_> {
+    #[rustfmt::skip]
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+
+        match (self.regs, self.diff) {
+            (MooRegisters::Sixteen(regs), None) => {
+                write!(fmt, "{}", MooRegisters16Printer { regs, cpu_type: self.cpu_type, diff: None })
+            }
+            (MooRegisters::Sixteen(regs), Some(MooRegisters::Sixteen(diff_regs))) => {
+                write!(fmt, "{}", MooRegisters16Printer { regs, cpu_type: self.cpu_type, diff: Some(diff_regs) })
+            }
+            (MooRegisters::ThirtyTwo(regs), None) => {
+                write!(fmt, "{}", MooRegisters32Printer { regs, cpu_type: self.cpu_type, diff: None, indent: self.indent })
+            }
+            (MooRegisters::ThirtyTwo(regs), Some(MooRegisters::ThirtyTwo(diff_regs))) => {
+                let rehydrated = regs.rehydrate(diff_regs);
+                write!(fmt, "{}", MooRegisters32Printer { regs: &rehydrated, cpu_type: self.cpu_type, diff: Some(diff_regs), indent: self.indent })
+            }
+            _ => Err(std::fmt::Error),
         }
     }
 }
