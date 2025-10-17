@@ -1,0 +1,15 @@
+[package]
+name = "moo_util"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+moo-rs = { path = "../moo" }
+
+log.workspace = true
+env_logger = "0.11"
+bpaf = { version = "0.9", features = ["autocomplete"] }
+anyhow = "1.0"

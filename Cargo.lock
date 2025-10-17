@@ -197,6 +197,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "bpaf"
+version = "0.9.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "473976d7a8620bb1e06dcdd184407c2363fe4fec8e983ee03ed9197222634a31"
+
+[[package]]
 name = "bumpalo"
 version = "3.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -727,6 +733,17 @@ dependencies = [
  "plotly",
  "serde",
  "walkdir",
+]
+
+[[package]]
+name = "moo_util"
+version = "0.3.0"
+dependencies = [
+ "anyhow",
+ "bpaf",
+ "env_logger",
+ "log",
+ "moo-rs",
 ]
 
 [[package]]

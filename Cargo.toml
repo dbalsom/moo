@@ -1,7 +1,9 @@
 [workspace]
 members = [
-    "crates/moo"
-, "crates/moo_report"]
+    "crates/moo",
+    "crates/moo_report",
+    "crates/moo_util"
+]
 resolver = "2"
 default-members = ["crates/moo"]
 

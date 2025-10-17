@@ -10,6 +10,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/moo/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/moo_report/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/moo/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/moo_util/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
     </content>
