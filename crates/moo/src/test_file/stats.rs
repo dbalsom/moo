@@ -22,7 +22,7 @@
 */
 use super::MooTestFile;
 use crate::{
-    prelude::MooCycleState,
+    prelude::{MooCycleState, MooTest},
     types::{flags::MooCpuFlag, MooBusState, MooRegister},
 };
 use std::collections::HashSet;
@@ -108,9 +108,11 @@ impl MooTestFile {
 
         log::debug!("Calculated registers modified: {:?}", registers_modified);
 
+        let filter_exception = |t: &&MooTest| t.exception.is_none();
+
         if self.arch.contains("386") {
             // Only count read signal on ALE.
-            let mem_reads_iter = self.tests.iter().map(|t| {
+            let mem_reads_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -122,21 +124,8 @@ impl MooTestFile {
             });
 
             collect_bus_stats!(self, new_stats, mem_reads, mem_reads_iter);
-            // new_stats.mem_reads.total = mem_reads_iter.count();
-            //
-            // let min_max_reads: Option<(usize, usize)> = mem_reads_iter.clone().fold(None, |acc, n| {
-            //     Some(match acc {
-            //         None => (n, n),
-            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
-            //     })
-            // });
-            //
-            // if let Some((min_reads, max_reads)) = min_max_reads {
-            //     new_stats.mem_reads.min = min_reads;
-            //     new_stats.mem_reads.max = max_reads;
-            // }
 
-            let mem_writes_iter = self.tests.iter().map(|t| {
+            let mem_writes_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| c.ale() && (c.memory_status & MooCycleState::MWTC_BIT != 0))
@@ -144,21 +133,8 @@ impl MooTestFile {
             });
 
             collect_bus_stats!(self, new_stats, mem_reads, mem_writes_iter);
-            // new_stats.mem_writes.total = mem_writes_iter.count();
-            //
-            // let min_max_writes: Option<(usize, usize)> = mem_writes_iter.clone().fold(None, |acc, n| {
-            //     Some(match acc {
-            //         None => (n, n),
-            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
-            //     })
-            // });
-            //
-            // if let Some((min_writes, max_writes)) = min_max_writes {
-            //     new_stats.mem_writes.min = min_writes;
-            //     new_stats.mem_writes.max = max_writes;
-            // }
 
-            let code_fetches_iter = self.tests.iter().map(|t| {
+            let code_fetches_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -169,21 +145,7 @@ impl MooTestFile {
 
             collect_bus_stats!(self, new_stats, code_fetches, code_fetches_iter);
 
-            // new_stats.code_fetches.total = code_fetches_iter.count();
-            //
-            // let min_max_fetches: Option<(usize, usize)> = code_fetches_iter.clone().fold(None, |acc, n| {
-            //     Some(match acc {
-            //         None => (n, n),
-            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
-            //     })
-            // });
-            //
-            // if let Some((min_fetches, max_fetches)) = min_max_fetches {
-            //     new_stats.code_fetches.min = min_fetches;
-            //     new_stats.code_fetches.max = max_fetches;
-            // }
-
-            let io_reads_iter = self.tests.iter().map(|t| {
+            let io_reads_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| c.ale() && (c.io_status & MooCycleState::IORC_BIT != 0))
@@ -191,21 +153,7 @@ impl MooTestFile {
             });
             collect_bus_stats!(self, new_stats, io_reads, io_reads_iter);
 
-            // new_stats.io_reads.total = io_reads_iter.count();
-            //
-            // let min_max_io_reads: Option<(usize, usize)> = io_reads_iter.clone().fold(None, |acc, n| {
-            //     Some(match acc {
-            //         None => (n, n),
-            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
-            //     })
-            // });
-            //
-            // if let Some((min_io_reads, max_io_reads)) = min_max_io_reads {
-            //     new_stats.io_reads.min = min_io_reads;
-            //     new_stats.io_reads.max = max_io_reads;
-            // }
-
-            let io_writes_iter = self.tests.iter().map(|t| {
+            let io_writes_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| c.ale() && (c.io_status & MooCycleState::IOWC_BIT != 0))
@@ -213,23 +161,10 @@ impl MooTestFile {
             });
 
             collect_bus_stats!(self, new_stats, io_writes, io_writes_iter);
-            // new_stats.io_writes.total = io_writes_iter.count();
-            //
-            // let min_max_io_writes: Option<(usize, usize)> = io_writes_iter.clone().fold(None, |acc, n| {
-            //     Some(match acc {
-            //         None => (n, n),
-            //         Some((mn, mx)) => (mn.min(n), mx.max(n)),
-            //     })
-            // });
-            //
-            // if let Some((min_io_writes, max_io_writes)) = min_max_io_writes {
-            //     new_stats.io_writes.min = min_io_writes;
-            //     new_stats.io_writes.max = max_io_writes;
-            // }
         }
         else {
             // Other CPUs can wait for PASV bus to signal completed read/write.
-            let mem_reads_iter = self.tests.iter().map(|t| {
+            let mem_reads_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -241,7 +176,7 @@ impl MooTestFile {
 
             collect_bus_stats!(self, new_stats, mem_reads, mem_reads_iter);
 
-            let mem_writes_iter = self.tests.iter().map(|t| {
+            let mem_writes_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -253,7 +188,7 @@ impl MooTestFile {
 
             collect_bus_stats!(self, new_stats, mem_writes, mem_writes_iter);
 
-            let code_fetches_iter = self.tests.iter().map(|t| {
+            let code_fetches_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -266,7 +201,7 @@ impl MooTestFile {
 
             collect_bus_stats!(self, new_stats, code_fetches, code_fetches_iter);
 
-            let io_reads_iter = self.tests.iter().map(|t| {
+            let io_reads_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
@@ -277,7 +212,7 @@ impl MooTestFile {
 
             collect_bus_stats!(self, new_stats, io_reads, io_reads_iter);
 
-            let io_writes_iter = self.tests.iter().map(|t| {
+            let io_writes_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
                     .iter()
                     .filter(|c| {
