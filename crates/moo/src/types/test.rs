@@ -103,6 +103,15 @@ impl MooTest {
         &self.cycles
     }
 
+    pub fn hash_string(&self) -> String {
+        if let Some(hash) = &self.hash {
+            hash.iter().map(|b| format!("{:02x}", b)).collect()
+        }
+        else {
+            "##NOHASH##".to_string()
+        }
+    }
+
     pub fn exception(&self) -> Option<&MooException> {
         self.exception.as_ref()
     }
