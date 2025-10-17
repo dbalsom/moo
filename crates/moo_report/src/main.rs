@@ -193,6 +193,8 @@ struct FileRow {
     min_mem_reads: usize,
     max_mem_reads: usize,
     mem_writes: usize,
+    min_mem_writes: usize,
+    max_mem_writes: usize,
     code_fetches: usize,
     io_reads: usize,
     io_writes: usize,
@@ -220,6 +222,8 @@ struct FileRowCsv {
     min_mem_reads: String,
     max_mem_reads: String,
     mem_writes: String,
+    min_mem_writes: String,
+    max_mem_writes: String,
     code_fetches: String,
     io_reads: String,
     io_writes: String,
@@ -250,6 +254,8 @@ impl From<&FileRow> for FileRowCsv {
             min_mem_reads: row.min_mem_reads.to_string(),
             max_mem_reads: row.max_mem_reads.to_string(),
             mem_writes: row.mem_writes.to_string(),
+            min_mem_writes: row.min_mem_writes.to_string(),
+            max_mem_writes: row.max_mem_writes.to_string(),
             code_fetches: row.code_fetches.to_string(),
             io_reads: row.io_reads.to_string(),
             io_writes: row.io_writes.to_string(),
@@ -317,6 +323,8 @@ impl FileRow {
             min_mem_reads: s.mem_reads.min,
             max_mem_reads: s.mem_reads.max,
             mem_writes: s.mem_writes.total,
+            min_mem_writes: s.mem_writes.min,
+            max_mem_writes: s.mem_writes.max,
             code_fetches: s.code_fetches.total,
             io_reads: s.io_reads.total,
             io_writes: s.io_writes.total,
@@ -440,11 +448,13 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
     let min_cycles: Vec<String> = rows.iter().map(|r| r.min_cycles.to_string()).collect();
     let max_cycles: Vec<String> = rows.iter().map(|r| r.max_cycles.to_string()).collect();
     let avg_cycles: Vec<String> = rows.iter().map(|r| format!("{:.2}", r.avg_cycles)).collect();
-    let mem_reads: Vec<String> = rows.iter().map(|r| r.mem_reads.to_string()).collect();
+    //let mem_reads: Vec<String> = rows.iter().map(|r| r.mem_reads.to_string()).collect();
     let mem_writes: Vec<String> = rows.iter().map(|r| r.mem_writes.to_string()).collect();
 
-    //let min_mr: Vec<String> = rows.iter().map(|r| r.min_mem_reads.to_string()).collect();
-    //let max_mr: Vec<String> = rows.iter().map(|r| r.max_mem_reads.to_string()).collect();
+    let min_mr: Vec<String> = rows.iter().map(|r| r.min_mem_reads.to_string()).collect();
+    let max_mr: Vec<String> = rows.iter().map(|r| r.max_mem_reads.to_string()).collect();
+    let min_mw: Vec<String> = rows.iter().map(|r| r.min_mem_reads.to_string()).collect();
+    let max_mw: Vec<String> = rows.iter().map(|r| r.max_mem_reads.to_string()).collect();
     let code_fetches: Vec<String> = rows.iter().map(|r| r.code_fetches.to_string()).collect();
     let io_reads: Vec<String> = rows.iter().map(|r| r.io_reads.to_string()).collect();
     let io_writes: Vec<String> = rows.iter().map(|r| r.io_writes.to_string()).collect();
@@ -495,9 +505,10 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
         "max cyc",
         "avg cyc",
         "min mr",
+        "max mr",
+        "min mw",
         "max mw",
-        "min f",
-        "max f",
+        "code fetches",
         "io reads",
         "io writes",
         "f modified",
@@ -517,8 +528,10 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
         min_cycles,
         max_cycles,
         avg_cycles,
-        mem_reads,
-        mem_writes,
+        min_mr,
+        max_mr,
+        min_mw,
+        max_mw,
         code_fetches,
         io_reads,
         io_writes,
