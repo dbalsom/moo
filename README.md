@@ -1,12 +1,12 @@
 # MOO
+
 The **Machine Opcode Operation (MOO)** File Format
 
 **MOO** is a simple chunked binary format used to encode CPU tests for the x86.
 
 A Rust library, `moo-rs`, for working with MOO files is included in `/crates/moo`.
 
-
-# MOO File Format Specification, Version 1
+# MOO File Format Specification, Version 1.1
 
 This document describes the structure of the **MOO** test file format used by CPU tests for the 8088, 8086, V20, V30,
 80186, 80286 and 80386 CPUs. **MOO** stands for **Machine Opcode Operation File**.
@@ -33,7 +33,7 @@ Each chunk has the following structure:
 | Chunk Length | 4            | `uint32` size of chunk payload data               |
 | Chunk Data   | Variable     | Chunk payload bytes as described below            |
 
-A conforming parser should use the chunk length field to advance to the next chunk - it SHOULD NOT assume that the 
+A conforming parser should use the chunk length field to advance to the next chunk - it SHOULD NOT assume that the
 next chunk immediately follows the previous.
 
 A conforming parser should skip chunks it does not recognize by using the chunk length field.
@@ -42,23 +42,23 @@ Chunks can contain other chunks within their payload, creating a hierarchical fi
 
 The typical structure of a `MOO` file is:
 
- - `MOO ` chunk
- - `TEST ` chunk
-   - `NAME` chunk
-   - `BYTS` chunk
-   - `INIT` chunk
-     - `REGS` chunk
-     - `RAM ` chunk 
-     - `QUEU` chunk (optional)
-   - `FINA` chunk
-     - `REGS` chunk
-     - `RAM ` chunk
-     - `QUEU` chunk (optional)
-   - `CYCL` chunk 
-   - `EXCP` chunk (optional)
-   - `HASH` chunk (optional)
- - ` TEST` next test chunk
-   
+- `MOO ` chunk
+- `TEST ` chunk
+    - `NAME` chunk
+    - `BYTS` chunk
+    - `INIT` chunk
+        - `REGS` chunk
+        - `RAM ` chunk
+        - `QUEU` chunk (optional)
+    - `FINA` chunk
+        - `REGS` chunk
+        - `RAM ` chunk
+        - `QUEU` chunk (optional)
+    - `CYCL` chunk
+    - `EXCP` chunk (optional)
+    - `HASH` chunk (optional)
+- ` TEST` next test chunk
+
 ## File-header Chunk: `MOO `
 
 | Field        | Size (bytes) | Description                                        |
@@ -69,6 +69,7 @@ The typical structure of a `MOO` file is:
 | Reserved     | 3            | 3x`uint8` reserved                                 |
 | Test Count   | 4            | `uint32` Number of tests in file                   |
 | CPU Name     | 4            | `ASCII_ID` of CPU being tested, padded with spaces |
+
 ---
 
 - Current `CPU Name` values:
@@ -80,9 +81,9 @@ The typical structure of a `MOO` file is:
     - `286 `
     - `386 `
 
-The `MOO ` header payload is at least 12 bytes as of file version 1, but may grow in future versions. 
+The `MOO ` header payload is at least 12 bytes as of file version 1, but may grow in future versions.
 The current version of `MOO ` is version 1. Additional chunk types may be added without
-incrementing the format version. Version increments will be reserved for changes to existing 
+incrementing the format version. Version increments will be reserved for changes to existing
 chunk types.
 
 ## Top-level Chunk: `TEST`
@@ -121,7 +122,7 @@ Each subchunk inside the `TEST` chunk is:
 | Length      | 4            | `uint32` length of name in bytes |
 | Name String | Variable     | ASCII encoded test name          |
 
-The `NAME` chunk has a redundant length field to accomodate expansion. 
+The `NAME` chunk has a redundant length field to accomodate expansion.
 
 ---
 
@@ -150,20 +151,23 @@ The `BYTS` chunk has a redundant length field to accomodate expansion.
 - CPU state snapshots (initial and final).
 - Payload consists of further subchunks:
 
-| Subchunk Type | Description         |
-|---------------|---------------------|
-| `REGS`        | Register data       |
-| `RAM `        | RAM entries         |
-| `QUEU`        | Queue data          |
+| Subchunk Type | Description          |
+|---------------|----------------------|
+| `REGS`        | 16-bit register data |
+| `RG32`        | 32-bit register data |
+| `RAM `        | RAM entries          |
+| `QUEU`        | Queue data           |
 
 ---
 
 #### a) `REGS`
 
 - Represents the regular, 16-bit x86 register file.
-- Only registers that were modified by the instruction are stored in the final state, so a bitmask is included that indicates whether a register should be parsed or ignored.
+- Only registers that were modified by the instruction are stored in the final state, so a bitmask is included that
+  indicates whether a register should be parsed or ignored.
 - The size of this chunk is dependent on the number of bits set in the mask.
-- The `REGS` chunk in the `INIT` chunk will have all register bits set, as the initial state always contains all registers.
+- The `REGS` chunk in the `INIT` chunk will have all register bits set, as the initial state always contains all
+  registers.
 
 | Field   | Size (bytes) | Description                                                                                |
 |---------|--------------|--------------------------------------------------------------------------------------------|
@@ -175,12 +179,36 @@ From LSB to MSB, the order of registers in the bitfield is:
 | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 12    |
 |----|----|----|----|----|----|----|----|----|----|----|----|----|-------|
 | ax | bx | cx | dx | cs | ss | ds | es | sp | bp | si | di | ip | flags |
+
     
 ---
 
-#### b) `RAM `
+#### b) `RG32`
 
-- List of memory address-value entries. These values should be written at their indicated registers before the start of the test.
+- Represents the 32-bit x86 register file introduced with the 80386.
+- Only registers that were modified by the instruction are stored in the final state, so a bitmask is included that
+  indicates whether a register should be parsed or ignored.
+- The size of this chunk is dependent on the number of bits set in the mask.
+- The `REGS` chunk in the `INIT` chunk will have all register bits set, as the initial state always contains all
+  registers.
+
+| Field   | Size (bytes) | Description                                                                                  |
+|---------|--------------|----------------------------------------------------------------------------------------------|
+| Bitmask | 4            | `uint32` bitmask indicating which registers are present (bit 0 = `cr0`, bit 1 = `cr3`, etc.) |
+| Values  | 4 bytes each | `uint32` register values in order for each bit set in the bitmask                            |
+
+From LSB to MSB the order of registers in the bitfield is:
+
+| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | 11 | 12 | 12 | 13 | 14 | 15  | 16     | 17  | 18  |
+|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|----|----|----|----|----|----|-----|--------|-----|-----|
+| cr0 | cr3 | eax | ebx | ecx | edx | esi | edi | ebp | esp | cs | ds | es | fs | gs | ss | eip | eflags | dr6 | dr7 |
+
+For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes should be ignored.
+
+#### c) `RAM `
+
+- List of memory address-value entries. These values should be written at their indicated registers before the start of
+  the test.
 - Format:
 
 | Field       | Size (bytes) | Description                                               |
@@ -190,9 +218,10 @@ From LSB to MSB, the order of registers in the bitfield is:
 
 ---
 
-#### c) `QUEU`
+#### d) `QUEU`
 
-- Contents of the processor instruction queue. The queue should be initialized before the test to the specified contents, if cycle-accurate testing is being performed.
+- Contents of the processor instruction queue. The queue should be initialized before the test to the specified
+  contents, if cycle-accurate testing is being performed.
 - Format:
 
 | Field  | Size (bytes) | Description                       |
@@ -228,7 +257,8 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 | Number    | 1            | `uint8` Exception or Interrupt Number  |
 | Flag Addr | 4            | `uint32` Address of Flags on the Stack |
 
-- When an exception or interrupt occurs, the flag register is pushed to the stack. For division exceptions in particular,
+- When an exception or interrupt occurs, the flag register is pushed to the stack. For division exceptions in
+  particular,
   the value of the flags register may include undefined flags that are tricky to emulate. You can use the provided
   address to mask the undefined flags from the value to assist in memory state validation.
 
@@ -236,16 +266,19 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### 5. `HASH`
 
-- SHA-1 hash of the test data. The hashing method is subject to change. The hash is not intended to be used as error detection,
-  but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for duplicate hashes
+- SHA-1 hash of the test data. The hashing method is subject to change. The hash is not intended to be used as error
+  detection,
+  but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for duplicate
+  hashes
   before publication.
 
-- The hexadecimal ASCII representation of a hash may be added to a **revocation list** in a test suite in the event that a
+- The hexadecimal ASCII representation of a hash may be added to a **revocation list** in a test suite in the event that
+  a
   problematic or incorrect test is discovered.
 
-| Field       | Size (bytes) | Description                              |
-|-------------|--------------|------------------------------------------|
-| Hash Data   | 20           | 20 x `uint8` SHA-1 hash                  |
+| Field     | Size (bytes) | Description             |
+|-----------|--------------|-------------------------|
+| Hash Data | 20           | 20 x `uint8` SHA-1 hash |
 
 ---
 
@@ -253,12 +286,12 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### Pin Bitfield #1 (`pin_bitfield0`)
 
-| Bit | Description                |
-|-----|----------------------------|
-| 0   | ALE pin*                   |
-| 1   | BHE pin**                  |
-| 2   | READY pin                  |
-| 3   | LOCK pin                   |
+| Bit | Description |
+|-----|-------------|
+| 0   | ALE pin*    |
+| 1   | BHE pin**   |
+| 2   | READY pin   |
+| 3   | LOCK pin    |
 
 - The 8088, 8086, V20 and V30 tests only contain the ALE pin in this field.
 - *On 80386, ALE is synthesized by the inverse of the ADS pin
@@ -266,9 +299,9 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### Pin Bitfield #2 (`pin_bitfield1`)
 
-| Bit | Description                |
-|-----|----------------------------|
-| 0   | BHE pin*                   |
+| Bit | Description |
+|-----|-------------|
+| 0   | BHE pin*    |
 
 - *This pin is valid on 8086 and V30. For 80286 and 80386, it was
   moved to pin_bitfield0.
@@ -289,11 +322,11 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ### Memory and IO Status (`memory_status` and `io_status`)
 
-| Bit | Description                |
-|-----|----------------------------|
-| 0   | Write                      |
-| 1   | Advanced Write*            |
-| 2   | Read                       |
+| Bit | Description     |
+|-----|-----------------|
+| 0   | Write           |
+| 1   | Advanced Write* |
+| 2   | Read            |
 
 - *Valid only for 8088, 8086, V20, V30
 
