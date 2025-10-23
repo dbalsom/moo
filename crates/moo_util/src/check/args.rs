@@ -22,26 +22,22 @@
 */
 use std::path::PathBuf;
 
-use crate::args::{hash_parser, in_path_parser};
+use crate::args::{hash_parser, in_path_parser, index_parser};
+
 use bpaf::{construct, Parser};
 
 #[derive(Clone, Debug)]
-pub(crate) struct DisplayParams {
+pub(crate) struct CheckParams {
     pub(crate) in_path: PathBuf,
     pub(crate) hash:    Option<String>,
     pub(crate) index:   Option<usize>,
 }
 
-pub(crate) fn display_parser() -> impl Parser<DisplayParams> {
+pub(crate) fn check_parser() -> impl Parser<CheckParams> {
     let in_path = in_path_parser();
-    let hash = hash_parser().optional();
-    let index = bpaf::long("index")
-        .help("Index of the test to display")
-        .argument("INDEX")
-        .optional();
 
-    construct!(DisplayParams { in_path, hash, index }).guard(
-        |p| p.hash.is_some() || p.index.is_some(),
-        "Either --hash or --index must be provided",
-    )
+    let hash = hash_parser().optional();
+    let index = index_parser().optional();
+
+    construct!(CheckParams { in_path, hash, index })
 }

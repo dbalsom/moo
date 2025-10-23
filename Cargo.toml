@@ -20,6 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 thiserror = "2.0"
 env_logger = "0.11"
 log = "0.4"
+flate2 = { version = "1.1", default-features = false, features = ["zlib"] }
 
 [workspace.dependencies.iced-x86]
 version = "1.21"

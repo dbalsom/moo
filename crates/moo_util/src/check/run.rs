@@ -20,28 +20,18 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-use std::path::PathBuf;
 
-use crate::args::{hash_parser, in_path_parser};
-use bpaf::{construct, Parser};
+use crate::{args::GlobalOptions, check::args::CheckParams};
 
-#[derive(Clone, Debug)]
-pub(crate) struct DisplayParams {
-    pub(crate) in_path: PathBuf,
-    pub(crate) hash:    Option<String>,
-    pub(crate) index:   Option<usize>,
-}
+use crate::working_set::WorkingSet;
+use anyhow::Error;
 
-pub(crate) fn display_parser() -> impl Parser<DisplayParams> {
-    let in_path = in_path_parser();
-    let hash = hash_parser().optional();
-    let index = bpaf::long("index")
-        .help("Index of the test to display")
-        .argument("INDEX")
-        .optional();
+pub fn run(global: &GlobalOptions, params: &CheckParams) -> Result<(), Error> {
+    let working_set = WorkingSet::from_path(&params.in_path, None)?;
 
-    construct!(DisplayParams { in_path, hash, index }).guard(
-        |p| p.hash.is_some() || p.index.is_some(),
-        "Either --hash or --index must be provided",
-    )
+    if working_set.is_empty() {
+        return Err(Error::msg("No files selected"));
+    }
+
+    Ok(())
 }

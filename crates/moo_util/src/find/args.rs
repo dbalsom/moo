@@ -26,22 +26,17 @@ use crate::args::{hash_parser, in_path_parser};
 use bpaf::{construct, Parser};
 
 #[derive(Clone, Debug)]
-pub(crate) struct DisplayParams {
+pub(crate) struct FindParams {
     pub(crate) in_path: PathBuf,
     pub(crate) hash:    Option<String>,
-    pub(crate) index:   Option<usize>,
 }
 
-pub(crate) fn display_parser() -> impl Parser<DisplayParams> {
-    let in_path = in_path_parser();
-    let hash = hash_parser().optional();
-    let index = bpaf::long("index")
-        .help("Index of the test to display")
-        .argument("INDEX")
-        .optional();
+pub(crate) fn find_parser() -> impl Parser<FindParams> {
+    //let path = positional::<String>("PATH").help("Path to the file to dump");
 
-    construct!(DisplayParams { in_path, hash, index }).guard(
-        |p| p.hash.is_some() || p.index.is_some(),
-        "Either --hash or --index must be provided",
-    )
+    let in_path = in_path_parser();
+
+    let hash = hash_parser().optional();
+
+    construct!(FindParams { in_path, hash }).guard(|p| p.hash.is_some(), "--hash must be provided")
 }
