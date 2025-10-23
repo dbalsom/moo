@@ -224,10 +224,11 @@ impl Display for MooRegistersPrinter<'_> {
 
         match (self.regs, self.diff) {
             (MooRegisters::Sixteen(regs), None) => {
-                write!(fmt, "{}", MooRegisters16Printer { regs, cpu_type: self.cpu_type, diff: None })
+                write!(fmt, "{}", MooRegisters16Printer { regs, cpu_type: self.cpu_type, diff: None, indent: self.indent })
             }
             (MooRegisters::Sixteen(regs), Some(MooRegisters::Sixteen(diff_regs))) => {
-                write!(fmt, "{}", MooRegisters16Printer { regs, cpu_type: self.cpu_type, diff: Some(diff_regs) })
+                let rehydrated = regs.rehydrate(diff_regs);
+                write!(fmt, "{}", MooRegisters16Printer { regs: &rehydrated, cpu_type: self.cpu_type, diff: Some(diff_regs), indent: self.indent })
             }
             (MooRegisters::ThirtyTwo(regs), None) => {
                 write!(fmt, "{}", MooRegisters32Printer { regs, cpu_type: self.cpu_type, diff: None, indent: self.indent })

@@ -22,7 +22,8 @@
 */
 
 use crate::{
-    prelude::{MooCycleState, MooTestState},
+    prelude::MooCycleState,
+    test::{comparison::MooComparison, test_state::MooTestState},
     types::{
         flags::{MooCpuFlag, MooCpuFlagsDiff},
         MooException,
@@ -34,18 +35,6 @@ use crate::{
         MooTestGenMetadata,
     },
 };
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum MooComparison {
-    Equal,
-    RegisterMismatch,
-    CycleCountMismatch(usize, usize),
-    CycleAddressMismatch(u32, u32),
-    CycleBusMismatch(u8, u8),
-    MemoryAddressMismatch(MooRamEntry, MooRamEntry),
-    MemoryValueMismatch(MooRamEntry, MooRamEntry),
-    ALEMismatch(usize, bool, bool),
-}
 
 pub struct MooTest {
     pub(crate) name: String,
@@ -164,6 +153,8 @@ impl MooTest {
     pub fn diff_flags(&self) -> MooCpuFlagsDiff {
         let mut set_flags: Vec<MooCpuFlag> = Vec::new();
         let mut cleared_flags: Vec<MooCpuFlag> = Vec::new();
+        let mut unmodified_set_flags: Vec<MooCpuFlag> = Vec::new();
+        let mut unmodified_cleared_flags: Vec<MooCpuFlag> = Vec::new();
 
         let flags_changed = match (&self.initial_state.regs, &self.final_state.regs) {
             (MooRegisters::Sixteen(regs16_0), MooRegisters::Sixteen(regs16_1)) => {
@@ -194,22 +185,11 @@ impl MooTest {
         for i in 0..32 {
             let flag_mask = 1 << i;
 
-            if flags_changed & flag_mask == 0 {
-                continue;
-            }
-
             // Check if flag is set
             let is_set = match &self.final_state.regs {
                 MooRegisters::Sixteen(regs16_1) => (regs16_1.flags as u32) & flag_mask != 0,
                 MooRegisters::ThirtyTwo(regs32_1) => regs32_1.eflags & flag_mask != 0,
             };
-
-            if is_set {
-                if let Some(flag) = MooCpuFlag::from_bit(i as u8) {
-                    //log::debug!("Flag set: {:?}", flag);
-                    set_flags.push(flag);
-                }
-            }
 
             // Check if flag is cleared
             let is_cleared = match &self.final_state.regs {
@@ -217,17 +197,33 @@ impl MooTest {
                 MooRegisters::ThirtyTwo(regs32_1) => regs32_1.eflags & flag_mask == 0,
             };
 
-            if is_cleared {
-                if let Some(flag) = MooCpuFlag::from_bit(i as u8) {
-                    //log::debug!("Flag cleared: {:?}", flag);
+            if let Some(flag) = MooCpuFlag::from_bit(i as u8) {
+                // Check if flags are unmodified
+                if flags_changed & flag_mask == 0 {
+                    if is_set {
+                        unmodified_set_flags.push(flag);
+                    }
+                    else if is_cleared {
+                        unmodified_cleared_flags.push(flag);
+                    }
+                    continue;
+                }
+
+                if is_set {
+                    set_flags.push(flag);
+                }
+
+                if is_cleared {
                     cleared_flags.push(flag);
                 }
             }
         }
 
         MooCpuFlagsDiff {
-            set_flags,
-            cleared_flags,
+            set: set_flags,
+            cleared: cleared_flags,
+            unmodified_set: unmodified_set_flags,
+            unmodified_cleared: unmodified_cleared_flags,
         }
     }
 

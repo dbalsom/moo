@@ -786,128 +786,37 @@ impl MooRegisters32 {
         delta_regs
     }
 
+    #[rustfmt::skip]
     pub fn rehydrate(&self, other: &MooRegisters32) -> MooRegisters32  {
-        let mut expanded_regs = MooRegisters32::default();
+        let mut expanded_regs = Self::default();
 
-        expanded_regs.cr0 = if self.reg_mask & MooRegisters32::CR0_MASK != 0 {
-            self.cr0
-        } else {
-            other.cr0
-        };
-        expanded_regs.cr3 = if self.reg_mask & MooRegisters32::CR3_MASK != 0 {
-            self.cr3
-        } else {
-            other.cr3
-        };
-        expanded_regs.eax = if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
-            self.eax
-        } else {
-            other.eax
-        };
-
-        expanded_regs.ebx = if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
-            self.ebx
-        } else {
-            other.ebx
-        };
-
-        expanded_regs.ecx = if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
-            self.ecx
-        } else {
-            other.ecx
-        };
-
-        expanded_regs.edx = if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
-            self.edx
-        } else {
-            other.edx
-        };
-
-        expanded_regs.esi = if self.reg_mask & MooRegisters32::ESI_MASK != 0 {
-            self.esi
-        } else {
-            other.esi
-        };
-
-        expanded_regs.edi = if self.reg_mask & MooRegisters32::EDI_MASK != 0 {
-            self.edi
-        } else {
-            other.edi
-        };
-
-        expanded_regs.ebp = if self.reg_mask & MooRegisters32::EBP_MASK != 0 {
-            self.ebp
-        } else {
-            other.ebp
-        };
-
-        expanded_regs.esp = if self.reg_mask & MooRegisters32::ESP_MASK != 0 {
-            self.esp
-        } else {
-            other.esp
-        };
-
-        expanded_regs.cs = if self.reg_mask & MooRegisters32::CS_MASK != 0 {
-            self.cs
-        } else {
-            other.cs
-        };
-
-        expanded_regs.ds = if self.reg_mask & MooRegisters32::DS_MASK != 0 {
-            self.ds
-        } else {
-            other.ds
-        };
-
-        expanded_regs.es = if self.reg_mask & MooRegisters32::ES_MASK != 0 {
-            self.es
-        } else {
-            other.es
-        };
-
-        expanded_regs.fs = if self.reg_mask & MooRegisters32::FS_MASK != 0 {
-            self.fs
-        } else {
-            other.fs
-        };
-
-        expanded_regs.gs = if self.reg_mask & MooRegisters32::GS_MASK != 0 {
-            self.gs
-        } else {
-            other.gs
-        };
-
-        expanded_regs.ss = if self.reg_mask & MooRegisters32::SS_MASK != 0 {
-            self.ss
-        } else {
-            other.ss
-        };
-
-        expanded_regs.eip = if self.reg_mask & MooRegisters32::EIP_MASK != 0 {
-            self.eip
-        } else {
-            other.eip
-        };
-
-        expanded_regs.eflags = if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+        expanded_regs.cr0 = if self.reg_mask & Self::CR0_MASK != 0 { self.cr0 } else { other.cr0 };
+        expanded_regs.cr3 = if self.reg_mask & Self::CR3_MASK != 0 { self.cr3 } else { other.cr3 };
+        expanded_regs.eax = if self.reg_mask & Self::EAX_MASK != 0 { self.eax } else { other.eax };
+        expanded_regs.ebx = if self.reg_mask & Self::EBX_MASK != 0 { self.ebx } else { other.ebx };
+        expanded_regs.ecx = if self.reg_mask & Self::ECX_MASK != 0 { self.ecx } else { other.ecx };
+        expanded_regs.edx = if self.reg_mask & Self::EDX_MASK != 0 { self.edx } else { other.edx };
+        expanded_regs.esi = if self.reg_mask & Self::ESI_MASK != 0 { self.esi } else { other.esi };
+        expanded_regs.edi = if self.reg_mask & Self::EDI_MASK != 0 { self.edi } else { other.edi };
+        expanded_regs.ebp = if self.reg_mask & Self::EBP_MASK != 0 { self.ebp } else { other.ebp };
+        expanded_regs.esp = if self.reg_mask & Self::ESP_MASK != 0 { self.esp } else { other.esp };
+        expanded_regs.cs = if self.reg_mask & Self::CS_MASK != 0 { self.cs } else { other.cs };
+        expanded_regs.ds = if self.reg_mask & Self::DS_MASK != 0 { self.ds } else { other.ds };
+        expanded_regs.es = if self.reg_mask & Self::ES_MASK != 0 { self.es } else { other.es };
+        expanded_regs.fs = if self.reg_mask & Self::FS_MASK != 0 { self.fs } else { other.fs };
+        expanded_regs.gs = if self.reg_mask & Self::GS_MASK != 0 { self.gs } else { other.gs };
+        expanded_regs.ss = if self.reg_mask & Self::SS_MASK != 0 { self.ss } else { other.ss };
+        expanded_regs.eip = if self.reg_mask & Self::EIP_MASK != 0 { self.eip } else { other.eip };
+        expanded_regs.eflags = if self.reg_mask & Self::EFLAGS_MASK != 0 {
             self.eflags
         } else {
             other.eflags
         };
 
-        expanded_regs.dr6 = if self.reg_mask & MooRegisters32::DR6_MASK != 0 {
-            self.dr6
-        } else {
-            other.dr6
-        };
+        expanded_regs.dr6 = if self.reg_mask & Self::DR6_MASK != 0 { self.dr6 } else { other.dr6 };
+        expanded_regs.dr7 = if self.reg_mask & Self::DR7_MASK != 0 { self.dr7 } else { other.dr7 };
 
-        expanded_regs.dr7 = if self.reg_mask & MooRegisters32::DR7_MASK != 0 {
-            self.dr7
-        } else {
-            other.dr7
-        };
-
-        expanded_regs.reg_mask = MooRegisters32::ALL_SET;
+        expanded_regs.reg_mask = Self::ALL_SET;
         expanded_regs
     }
 }
@@ -1019,7 +928,7 @@ impl Display for crate::types::MooRegisters32Printer<'_> {
         let mut tag_string = String::with_capacity(16);
         if let Some(diff) = self.diff {
             //tag_string.clear();
-            for bit_i in (0..15).rev() {
+            for bit_i in (0..16).rev() {
                 if (f & (1 << bit_i)) != (diff.eflags & (1 << bit_i)) {
                     tag_string.push('^');
                 }
@@ -1031,22 +940,22 @@ impl Display for crate::types::MooRegisters32Printer<'_> {
 
         write!(fmt, "{}{}", reg_str, flag_str)?;
 
-        write!(
+        let result = write!(
             fmt,
             " {m_chr}{nt_chr}{iopl1_chr}{iopl0_chr}\
             {o_chr}{d_chr}{i_chr}{t_chr}{s_chr}{z_chr}0{a_chr}0{p_chr}1{c_chr}",
-        )?;
+        );
 
         if flag_diff_chr == '*' {
             write!(
                 fmt,
-                "\n{:indent$}{tag_string}\n",
+                "\n{:indent$}{tag_string}",
                 "",
-                indent = flag_str.len() + 2
+                indent = flag_str.len() + 1
             )
         }
         else {
-            write!(fmt, "\n")
+            result
         }
     }
 }

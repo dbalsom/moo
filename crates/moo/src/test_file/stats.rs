@@ -84,20 +84,36 @@ macro_rules! collect_bus_stats {
 }
 
 impl MooTestFile {
-    pub fn calc_stats(&mut self) -> MooTestFileStats {
+    pub fn calc_stats(&mut self, cycle_subtract: usize) -> MooTestFileStats {
         let test_ct = self.tests.len();
 
         let mut new_stats = MooTestFileStats::default();
+        let filter_exception = |t: &&MooTest| t.exception.is_none();
 
         new_stats.total_cycles = self.tests.iter().map(|t| t.cycles.len()).sum();
-        new_stats.min_cycles = self.tests.iter().map(|t| t.cycles.len()).min().unwrap_or(0);
-        new_stats.max_cycles = self.tests.iter().map(|t| t.cycles.len()).max().unwrap_or(0);
+        new_stats.min_cycles = self
+            .tests
+            .iter()
+            .filter(filter_exception)
+            .map(|t| t.cycles.len())
+            .min()
+            .unwrap_or(0);
+        new_stats.max_cycles = self
+            .tests
+            .iter()
+            .filter(filter_exception)
+            .map(|t| t.cycles.len())
+            .max()
+            .unwrap_or(0);
         new_stats.avg_cycles = if test_ct > 0 {
             new_stats.total_cycles as f64 / test_ct as f64
         }
         else {
             0.0
         };
+
+        new_stats.min_cycles = new_stats.min_cycles.saturating_sub(cycle_subtract);
+        new_stats.max_cycles = new_stats.max_cycles.saturating_sub(cycle_subtract);
 
         let registers_modified: HashSet<MooRegister> = self
             .tests
@@ -107,8 +123,6 @@ impl MooTestFile {
             .collect();
 
         log::debug!("Calculated registers modified: {:?}", registers_modified);
-
-        let filter_exception = |t: &&MooTest| t.exception.is_none();
 
         if self.arch.contains("386") {
             // Only count read signal on ALE.
@@ -132,7 +146,7 @@ impl MooTestFile {
                     .count()
             });
 
-            collect_bus_stats!(self, new_stats, mem_reads, mem_writes_iter);
+            collect_bus_stats!(self, new_stats, mem_writes, mem_writes_iter);
 
             let code_fetches_iter = self.tests.iter().filter(filter_exception).map(|t| {
                 t.cycles
@@ -237,19 +251,44 @@ impl MooTestFile {
             })
             .collect();
 
-        let (flags_set, flags_cleared): (HashSet<_>, HashSet<_>) = self.tests.iter().fold(
-            (HashSet::default(), HashSet::default()),
-            |(mut set_acc, mut clr_acc), t| {
+        let (flags_set, flags_cleared, flags_unmodified_set, flags_unmodified_cleared): (
+            HashSet<_>,
+            HashSet<_>,
+            HashSet<_>,
+            HashSet<_>,
+        ) = self.tests.iter().fold(
+            (
+                HashSet::default(),
+                HashSet::default(),
+                HashSet::default(),
+                HashSet::default(),
+            ),
+            |(mut set_acc, mut clr_acc, mut uset_acc, mut uclr_acc), t| {
                 let fd = t.diff_flags();
-                set_acc.extend(fd.set_flags.iter().cloned());
-                clr_acc.extend(fd.cleared_flags.iter().cloned());
-                (set_acc, clr_acc)
+                set_acc.extend(fd.set.iter().cloned());
+                clr_acc.extend(fd.cleared.iter().cloned());
+                uset_acc.extend(fd.unmodified_set.iter().cloned());
+                uclr_acc.extend(fd.unmodified_cleared.iter().cloned());
+                (set_acc, clr_acc, uset_acc, uclr_acc)
             },
         );
 
-        // Flags that were set but never cleared; and cleared but never set.
-        let flags_always_set: HashSet<_> = flags_set.difference(&flags_cleared).cloned().collect();
-        let flags_always_cleared: HashSet<_> = flags_cleared.difference(&flags_set).cloned().collect();
+        // Flags that were always modified and set but never cleared; and always modified and cleared but never set.
+        let flags_always_set: HashSet<_> = flags_set
+            .difference(&flags_cleared)
+            .cloned()
+            .collect::<HashSet<MooCpuFlag>>()
+            .difference(&flags_unmodified_cleared)
+            .cloned()
+            .collect();
+
+        let flags_always_cleared: HashSet<_> = flags_cleared
+            .difference(&flags_set)
+            .cloned()
+            .collect::<HashSet<MooCpuFlag>>()
+            .difference(&flags_unmodified_set)
+            .cloned()
+            .collect();
 
         let flags_modified: HashSet<_> = flags_set.union(&flags_cleared).cloned().collect();
 

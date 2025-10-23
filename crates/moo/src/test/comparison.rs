@@ -20,8 +20,16 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+use crate::types::MooRamEntry;
 
-pub mod prelude;
-mod test;
-pub mod test_file;
-pub mod types;
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum MooComparison {
+    Equal,
+    RegisterMismatch,
+    CycleCountMismatch(usize, usize),
+    CycleAddressMismatch(u32, u32),
+    CycleBusMismatch(u8, u8),
+    MemoryAddressMismatch(MooRamEntry, MooRamEntry),
+    MemoryValueMismatch(MooRamEntry, MooRamEntry),
+    ALEMismatch(usize, bool, bool),
+}

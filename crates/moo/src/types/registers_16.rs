@@ -498,12 +498,36 @@ impl MooRegisters16 {
         delta_regs.reg_mask = reg_mask;
         delta_regs
     }
+
+    #[rustfmt::skip]
+    pub fn rehydrate(&self, other: &MooRegisters16) -> MooRegisters16 {
+        let mut expanded_regs = MooRegisters16::default();
+
+        expanded_regs.ax = if self.reg_mask & Self::AX_MASK != 0 { self.ax } else { other.ax };
+        expanded_regs.bx = if self.reg_mask & Self::BX_MASK != 0 { self.bx } else { other.bx };
+        expanded_regs.cx = if self.reg_mask & Self::CX_MASK != 0 { self.cx } else { other.cx };
+        expanded_regs.dx = if self.reg_mask & Self::DX_MASK != 0 { self.dx } else { other.dx };
+        expanded_regs.cs = if self.reg_mask & Self::CS_MASK != 0 { self.cs } else { other.cs };
+        expanded_regs.ss = if self.reg_mask & Self::SS_MASK != 0 { self.ss } else { other.ss };
+        expanded_regs.ds = if self.reg_mask & Self::DS_MASK != 0 { self.ds } else { other.ds };
+        expanded_regs.es = if self.reg_mask & Self::ES_MASK != 0 { self.es } else { other.es };
+        expanded_regs.sp = if self.reg_mask & Self::SP_MASK != 0 { self.sp } else { other.sp };
+        expanded_regs.bp = if self.reg_mask & Self::BP_MASK != 0 { self.bp } else { other.bp };
+        expanded_regs.si = if self.reg_mask & Self::SI_MASK != 0 { self.si } else { other.si };
+        expanded_regs.di = if self.reg_mask & Self::DI_MASK != 0 { self.di } else { other.di };
+        expanded_regs.ip = if self.reg_mask & Self::IP_MASK != 0 { self.ip } else { other.ip };
+        expanded_regs.flags = if self.reg_mask & Self::FLAGS_MASK != 0 { self.flags } else { other.flags };
+        expanded_regs.reg_mask = Self::ALL_SET;
+
+        expanded_regs
+    }
 }
 
 pub struct MooRegisters16Printer<'a> {
     pub regs: &'a MooRegisters16,
     pub cpu_type: MooCpuType,
     pub diff: Option<&'a MooRegisters16>,
+    pub indent: u32,
 }
 
 macro_rules! diff_chr {
@@ -526,25 +550,35 @@ impl Display for MooRegisters16Printer<'_> {
     #[rustfmt::skip]
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let reg_str = format!(
-            "AX:{}{:04X} BX:{}{:04X} CX:{}{:04X} DX:{}{:04X}\n\
-             SP:{}{:04X} BP:{}{:04X} SI:{}{:04X} DI:{}{:04X}\n\
-             CS:{}{:04X} DS:{}{:04X} ES:{}{:04X} SS:{}{:04X}\n\
-             IP:{}{:04X}\n\
-             FLAGS:{}{:04X} ",
+            "{:indent$}AX:{}{:04X} BX:{}{:04X} CX:{}{:04X} DX:{}{:04X}\n\
+             {:indent$}SI:{}{:04X} DI:{}{:04X} BP:{}{:04X} SP:{}{:04X}\n\
+             {:indent$}CS:{}{:04X} DS:{}{:04X} ES:{}{:04X} SS:{}{:04X}\n\
+             {:indent$}IP:{}{:04X}\n",
+            "",
             diff_chr!(self, ax), self.regs.ax,
             diff_chr!(self, bx), self.regs.bx,
             diff_chr!(self, cx), self.regs.cx,
             diff_chr!(self, dx), self.regs.dx,
-            diff_chr!(self, sp), self.regs.sp,
-            diff_chr!(self, bp), self.regs.bp,
+            "",
             diff_chr!(self, si), self.regs.si,
             diff_chr!(self, di), self.regs.di,
+            diff_chr!(self, bp), self.regs.bp,
+            diff_chr!(self, sp), self.regs.sp,
+            "",
             diff_chr!(self, cs), self.regs.cs,
             diff_chr!(self, ds), self.regs.ds,
             diff_chr!(self, es), self.regs.es,
             diff_chr!(self, ss), self.regs.ss,
+            "",
             diff_chr!(self, ip), self.regs.ip,
-            diff_chr!(self, flags), self.regs.flags,
+            indent = self.indent as usize,
+        );
+
+        let flag_diff_chr = diff_chr!(self, flags);
+        let flag_str = format!("{:indent$}FLAGS:{}{:04X}",
+            "",
+            flag_diff_chr, self.regs.flags,
+            indent = self.indent as usize,
         );
 
         // Expand flag info
@@ -592,14 +626,40 @@ impl Display for MooRegisters16Printer<'_> {
             }
         };
 
+        let mut tag_string = String::with_capacity(16);
+        if let Some(diff) = self.diff {
+            for bit_i in (0..16).rev() {
+                if (f & (1 << bit_i)) != (diff.flags & (1 << bit_i)) {
+                    tag_string.push('^');
+                }
+                else {
+                    tag_string.push(' ');
+                }
+            }
+        }
+
         let nt_chr = if f & MooRegisters16::FLAG_NT != 0 { '1' } else { '0' };
         let iopl0_chr = if f & MooRegisters16::FLAG_IOPL0 != 0 { '1' } else { '0' };
         let iopl1_chr = if f & MooRegisters16::FLAG_IOPL1 != 0 { '1' } else { '0' };
 
-        write!(
+        write!(fmt, "{}{}", reg_str, flag_str)?;
+
+        let result = write!(
             fmt,
-            "{reg_str}{m_chr}{nt_chr}{iopl1_chr}{iopl0_chr}\
+            " {m_chr}{nt_chr}{iopl1_chr}{iopl0_chr}\
             {o_chr}{d_chr}{i_chr}{t_chr}{s_chr}{z_chr}0{a_chr}0{p_chr}1{c_chr}",
-        )
+        );
+
+        if flag_diff_chr == '*' {
+            write!(
+                fmt,
+                "\n{:indent$}{tag_string}",
+                "",
+                indent = flag_str.len() + 1
+            )
+        }
+        else {
+            result
+        }
     }
 }

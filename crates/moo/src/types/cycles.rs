@@ -93,7 +93,7 @@ impl MooCycleState {
         self.is_writing_mem() || self.is_writing_io()
     }
     pub fn is_code_fetch(&self, cpu_type: MooCpuType) -> bool {
-        self.is_reading_mem() && self.bus_state(cpu_type) == MooBusState::CODE
+        self.is_reading_mem() && (self.bus_state(cpu_type) == MooBusState::CODE)
     }
 
     #[inline]
@@ -106,6 +106,8 @@ pub struct MooCycleStatePrinter {
     pub cpu_type: MooCpuType,
     pub address_latch: u32,
     pub state: MooCycleState,
+    pub show_cycle_num: bool,
+    pub cycle_num: usize,
 }
 
 impl MooCycleStatePrinter {
@@ -197,7 +199,7 @@ impl Display for MooCycleStatePrinter {
         let bus_str = bus_state.to_string();
 
         let t_state = self.state.t_state.try_into().unwrap_or(MooTState::Ti);
-        let t_string = self.cpu_type.tstate_to_string(t_state);
+        let t_str = self.cpu_type.tstate_to_string(t_state);
 
         let mut xfer_str = "        ".to_string();
 
@@ -235,30 +237,27 @@ impl Display for MooCycleStatePrinter {
         let bus_chr_width = self.cpu_type.bus_chr_width();
         let data_chr_width = self.cpu_type.data_chr_width();
 
+        let bus_str = format!("{bus_str:04}[{bus_raw:01}]");
+
+        let cycle_num_str = if self.show_cycle_num {
+            format!("{:04} ", self.cycle_num)
+        }
+        else {
+            "".to_string()
+        };
+
         write!(
             f,
-            "{ale_str:02}{addr_latch:0bus_chr_width$X}:{addr_bus:0bus_chr_width$X}:{data_bus:0data_chr_width$X} \
-            {seg_str:02} M:{rs_chr}{aws_chr}{ws_chr} I:{ior_chr}{aiow_chr}{iow_chr} \
-            P:{intr_chr}{inta_chr}{lock_chr}{ready_chr}{bhe_chr} {bus_str:04}[{bus_raw:01}] {t_str:02} {xfer_str:06}",
-            ale_str = ale_str,
+            "{cycle_num_str}{ale_str:02}{addr_latch:0bus_chr_width$X}:{addr_bus:0bus_chr_width$X}:{data_bus:0data_chr_width$X} \
+            {xfer_str:06} \
+            {seg_str:02} \
+            M:{rs_chr}{aws_chr}{ws_chr} \
+            I:{ior_chr}{aiow_chr}{iow_chr} \
+            P:{intr_chr}{inta_chr}{lock_chr}{ready_chr}{bhe_chr} \
+            {bus_str:08} {t_str:02}",
             addr_latch = self.address_latch,
             addr_bus = self.state.address_bus,
             data_bus = self.state.data_bus,
-            bus_chr_width = bus_chr_width,
-            seg_str = seg_str,
-            rs_chr = rs_chr,
-            aws_chr = aws_chr,
-            ws_chr = ws_chr,
-            ior_chr = ior_chr,
-            aiow_chr = aiow_chr,
-            iow_chr = iow_chr,
-            intr_chr = intr_chr,
-            inta_chr = inta_chr,
-            bhe_chr = bhe_chr,
-            bus_str = bus_str,
-            bus_raw = bus_raw,
-            t_str = t_string,
-            xfer_str = xfer_str,
             // q_op_chr = q_op_chr,
             // q_str = self.queue.to_string(),
             // width = self.queue.size() * 2,

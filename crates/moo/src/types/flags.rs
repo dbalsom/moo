@@ -21,29 +21,50 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+/// [MooCpuFlag] represents the individual bits contained within an x86 CPU's FLAGS or EFLAGS
+/// register.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 pub enum MooCpuFlag {
-    CF = 0,         // Carry Flag
-    Reserved0 = 1,  // Reserved
-    PF = 2,         // Parity Flag
-    Reserved1 = 3,  // Reserved
-    AF = 4,         // Auxiliary Carry Flag
-    Reserved2 = 5,  // Reserved
-    ZF = 6,         // Zero Flag
-    SF = 7,         // Sign Flag
-    TF = 8,         // Trap Flag
-    IF = 9,         // Interrupt Enable Flag
-    DF = 10,        // Direction Flag
-    OF = 11,        // Overflow Flag
-    IOPL0 = 12,     // I/O Privilege Level (2 bits)
-    IOPL1 = 13,     // I/O Privilege Level (2 bits)
-    NT = 14,        // Nested Task
-    Reserved3 = 15, // Reserved
-    RF = 16,        // Resume Flag
-    VM = 17,        // Virtual-8086 Mode
+    /// Carry Flag
+    CF = 0,
+    /// Reserved bit, always 1 on all x86 CPUs
+    Reserved0 = 1,
+    /// Parity Flag
+    PF = 2,
+    // Reserved bit, always 0
+    Reserved1 = 3,
+    /// Auxiliary Carry Flag
+    AF = 4,
+    /// Reserved bit, always 1
+    Reserved2 = 5,
+    /// Zero Flag
+    ZF = 6,
+    /// Sign Flag
+    SF = 7,
+    /// Trap Flag
+    TF = 8,
+    /// Interrupt Enable Flag
+    IF = 9,
+    /// Direction Flag
+    DF = 10,
+    /// Overflow Flag
+    OF = 11,
+    /// Bit 0 of I/O Privilege Level
+    IOPL0 = 12,
+    /// Bit 1 of I/O Privilege Level
+    IOPL1 = 13,
+    /// Nested Task Flag
+    NT = 14,
+    /// Reserved
+    Reserved3 = 15,
+    /// Resume Flag
+    RF = 16,
+    /// Virtual-8086 Mode flag
+    VM = 17,
 }
 
 impl MooCpuFlag {
+    /// Convert a u8 bit index into a [MooCpuFlag] or return `None` if the index is out of range.
     pub fn from_bit(bit: u8) -> Option<Self> {
         match bit {
             0 => Some(MooCpuFlag::CF),
@@ -69,8 +90,15 @@ impl MooCpuFlag {
     }
 }
 
+/// A representation of the difference between two flag registers.
 #[derive(Clone, Default, Debug)]
 pub struct MooCpuFlagsDiff {
-    pub set_flags: Vec<MooCpuFlag>,
-    pub cleared_flags: Vec<MooCpuFlag>,
+    /// Flags that were modified and set in the final flag state.
+    pub set: Vec<MooCpuFlag>,
+    /// Flags that were modified and cleared in the final flag state.
+    pub cleared: Vec<MooCpuFlag>,
+    /// Flags that were unmodified and remain set in the final flag state.
+    pub unmodified_set: Vec<MooCpuFlag>,
+    /// Flags that were unmodified and remain cleared in the final flag state.
+    pub unmodified_cleared: Vec<MooCpuFlag>,
 }

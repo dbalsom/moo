@@ -21,9 +21,8 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use crate::test_file;
-use crate::types;
+use crate::{test, test_file, types};
 
-pub use test_file::MooTestFile;
-pub use test_file::stats::MooTestFileStats;
-pub use types::{MooCycleState, MooRegisters16Init, MooRegisters32Init, MooTest, MooTestState, MooIvtOrder};
+pub use test::moo_test::MooTest;
+pub use test_file::{stats::MooTestFileStats, MooTestFile};
+pub use types::{MooCycleState, MooIvtOrder, MooRegisters16Init, MooRegisters32Init};

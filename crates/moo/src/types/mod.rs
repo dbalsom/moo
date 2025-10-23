@@ -31,19 +31,19 @@ pub mod ram;
 pub mod registers;
 pub mod registers_16;
 pub mod registers_32;
-pub mod test;
-pub mod test_state;
 
-use binrw::binrw;
+use std::fmt::Display;
+
 pub use cycles::*;
 pub use metadata::*;
 pub use ram::*;
 pub use registers::*;
 pub use registers_16::*;
 pub use registers_32::*;
-use std::fmt::Display;
-pub use test::*;
-pub use test_state::*;
+pub use test::{comparison::MooComparison, moo_test::MooTest, test_state::MooTestState};
+
+use crate::test;
+use binrw::binrw;
 
 /// [MooCpuType] represents the type of CPU used to produce a test case.
 #[derive(Copy, Clone, Debug, Default)]

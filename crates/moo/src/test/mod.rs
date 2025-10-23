@@ -21,7 +21,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-pub mod prelude;
-mod test;
-pub mod test_file;
-pub mod types;
+pub mod comparison;
+pub mod moo_test;
+pub mod test_state;

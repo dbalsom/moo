@@ -22,33 +22,50 @@
 */
 pub mod stats;
 
-use std::io::{Cursor, Read, Seek, Write};
+use std::{
+    collections::HashMap,
+    io::{self, Cursor, Read, Seek, SeekFrom, Write},
+};
 
-use crate::types::{
-    chunks::{MooBytesChunk, MooChunkHeader, MooChunkType, MooFileHeader, MooHashChunk, MooNameChunk, MooTestChunk},
-    effective_address::MooEffectiveAddress,
-    errors::MooError,
-    test_state::MooTestState,
-    MooCpuType,
-    MooCycleState,
-    MooException,
-    MooFileMetadata,
-    MooRamEntries,
-    MooRegisters,
-    MooRegisters16,
-    MooStateType,
-    MooTest,
-    MooTestGenMetadata,
+use crate::{
+    test::moo_test::MooTest,
+    types::{
+        chunks::{
+            MooBytesChunk,
+            MooChunkHeader,
+            MooChunkType,
+            MooFileHeader,
+            MooHashChunk,
+            MooNameChunk,
+            MooTestChunk,
+        },
+        effective_address::MooEffectiveAddress,
+        errors::MooError,
+        MooCpuType,
+        MooCycleState,
+        MooException,
+        MooFileMetadata,
+        MooRamEntries,
+        MooRegisters,
+        MooRegisters16,
+        MooStateType,
+        MooTestGenMetadata,
+    },
 };
 
 use binrw::{BinRead, BinResult, BinWrite};
 use sha1::Digest;
+
+use crate::test::test_state::MooTestState;
+#[cfg(feature = "gzip")]
+use flate2::read::GzDecoder;
 
 pub struct MooTestFile {
     version: u8,
     arch: String,
     cpu_type: MooCpuType,
     tests: Vec<MooTest>,
+    hashes: HashMap<String, usize>,
     metadata: Option<MooFileMetadata>,
 }
 
@@ -59,6 +76,7 @@ impl MooTestFile {
             arch: cpu_type.to_str().to_string(),
             cpu_type,
             tests: Vec::with_capacity(capacity),
+            hashes: HashMap::with_capacity(capacity),
             metadata: None,
         }
     }
@@ -93,7 +111,59 @@ impl MooTestFile {
 
     pub fn read<RS: Read + Seek>(reader: &mut RS) -> BinResult<MooTestFile> {
         // Seek to the start of the reader.
-        reader.seek(std::io::SeekFrom::Start(0))?;
+        reader.seek(SeekFrom::Start(0))?;
+
+        let is_gz = MooTestFile::is_gzip_stream(reader)?; // This seeks back to 0.
+
+        // If it's gz, decompress to a Vec and parse from a Cursor so we still have Read+Seek.
+        #[cfg(feature = "gzip")]
+        if is_gz {
+            let mut compressed = Vec::new();
+            reader.read_to_end(&mut compressed)?;
+            let mut gz = GzDecoder::new(&compressed[..]);
+
+            let mut decompressed = Vec::new();
+            gz.read_to_end(&mut decompressed)?;
+
+            let mut cursor = Cursor::new(decompressed);
+            return MooTestFile::read_impl(&mut cursor);
+        }
+
+        // If gzip is disabled but stream looks like gzip, return a helpful error.
+        #[cfg(not(feature = "gzip"))]
+        if is_gz {
+            return Err(binrw::Error::Custom {
+                pos: 0,
+                err: Box::new(MooError::ParseError(
+                    "Input appears to be gzip-compressed; rebuild with the `gzip` feature enabled.".to_string(),
+                )),
+            });
+        }
+
+        // Plain (non-gz) path: parse directly.
+        MooTestFile::read_impl(reader)
+    }
+
+    /// Peek the first two bytes to detect gzip magic (0x1F, 0x8B). Seeks back to start.
+    fn is_gzip_stream<R: Read + Seek>(reader: &mut R) -> io::Result<bool> {
+        let mut magic = [0u8; 2];
+        let start = reader.stream_position().unwrap_or(0);
+        reader.read_exact(&mut magic).or_else(|e| {
+            // If we can't even read 2 bytes, treat as not-gzip (rewind anyway).
+            if e.kind() == io::ErrorKind::UnexpectedEof {
+                Ok(())
+            }
+            else {
+                Err(e)
+            }
+        })?;
+        reader.seek(SeekFrom::Start(start))?;
+        Ok(magic == [0x1F, 0x8B])
+    }
+
+    fn read_impl<R: Read + Seek>(reader: &mut R) -> BinResult<MooTestFile> {
+        // Seek to the start of the reader.
+        reader.seek(SeekFrom::Start(0))?;
 
         // Get reader len.
         let reader_len = MooTestFile::get_reader_len(reader)?;
@@ -207,7 +277,7 @@ impl MooTestFile {
                     let mut initial_state = MooTestState::default();
                     let mut final_state = MooTestState::default();
 
-                    let mut hash = None;
+                    let mut hash: Option<[u8; 20]> = None;
                     let mut cycle_vec = Vec::new();
 
                     let mut exception = None;
@@ -217,6 +287,28 @@ impl MooTestFile {
                         // Read the next chunk type.
                         let bytes_remaining = test_reader.get_ref().len() - test_reader.position() as usize;
                         if bytes_remaining == 0 {
+                            if hash.is_none() {
+                                return Err(binrw::Error::Custom {
+                                    pos: top_level_chunk_offset + test_reader.position(),
+                                    err: Box::new(MooError::ParseError(
+                                        "Test is missing required HASH chunk.".to_string(),
+                                    )),
+                                });
+                            }
+
+                            let hash_str = hash
+                                .as_ref()
+                                .unwrap()
+                                .iter()
+                                .map(|b| format!("{:02X}", b))
+                                .collect::<String>();
+                            if new_file.hashes.contains_key(&hash_str) {
+                                log::warn!("Duplicate test hash detected: {} in test '{}'", hash_str, test_name);
+                            }
+                            else {
+                                new_file.hashes.insert(hash_str, new_file.tests.len());
+                            }
+
                             // Push the test to the file.
                             new_file.add_test(MooTest {
                                 name: test_name.clone(),
@@ -446,7 +538,7 @@ impl MooTestFile {
             MooChunkType::FileMetadata.write(writer, metadata)?;
         }
 
-        // Write all the test chunks.
+        // Write all the tests.
         for (ti, test) in self.tests.iter().enumerate() {
             let mut test_buffer = Cursor::new(Vec::new());
 
