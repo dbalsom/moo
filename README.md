@@ -21,7 +21,7 @@ All fields are little-endian.
 - `uint32` - An unsigned, 32-bit, little-endian double-word
 - `uint64` - An unsigned, 64-bit, little-endian quad-word
 
-## File Overview
+## MOO File Overview
 
 A **MOO** file consists of a `MOO ` chunk, followed by one or more `TEST` chunks concatenated together.
 
@@ -33,10 +33,14 @@ Each chunk has the following structure:
 | Chunk Length | 4            | `uint32` size of chunk payload data               |
 | Chunk Data   | Variable     | Chunk payload bytes as described below            |
 
-A conforming parser should use the chunk length field to advance to the next chunk - it SHOULD NOT assume that the
-next chunk immediately follows the previous.
+> [!IMPORTANT]  
+> A conforming parser should use the chunk length field to advance to the next chunk - it SHOULD NOT assume that the
+> next chunk immediately follows the previous. This allows additional fields to be added to chunks in future revisions
+> of the MOO format without breaking backwards compatibility.
+>
+> A conforming parser should skip chunks it does not recognize by using the chunk length field.
 
-A conforming parser should skip chunks it does not recognize by using the chunk length field.
+## MOO File Structure
 
 Chunks can contain other chunks within their payload, creating a hierarchical file structure.
 
@@ -56,7 +60,7 @@ The typical structure of a `MOO` file is:
         - `QUEU` chunk (optional)
     - `CYCL` chunk
     - `EXCP` chunk (optional)
-    - `HASH` chunk (optional)
+    - `HASH` chunk
 - ` TEST` next test chunk
 
 ## File-header Chunk: `MOO `
@@ -149,14 +153,15 @@ The `BYTS` chunk has a redundant length field to accomodate expansion.
 | Payload      | variable     | `REGS`, `RAM `, `QUEU` subchunks                              |
 
 - CPU state snapshots (initial and final).
-- Payload consists of further subchunks:
+- Payload consists of further subchunks of the following possible types:
 
-| Subchunk Type | Description          |
-|---------------|----------------------|
-| `REGS`        | 16-bit register data |
-| `RG32`        | 32-bit register data |
-| `RAM `        | RAM entries          |
-| `QUEU`        | Queue data           |
+| Subchunk Type | Description            |
+|---------------|------------------------|
+| `REGS`        | 16-bit register data   |
+| `RG32`        | 32-bit register data   |
+| `RAM `        | RAM entries            |
+| `QUEU`        | Queue data             |
+| `EA32`        | Effective address info |
 
 ---
 
@@ -185,7 +190,7 @@ From LSB to MSB, the order of registers in the bitfield is:
 
 #### b) `RG32`
 
-- Represents the 32-bit x86 register file introduced with the 80386.
+- Represents the 32-bit x86 register file introduced with the 386.
 - Only registers that were modified by the instruction are stored in the final state, so a bitmask is included that
   indicates whether a register should be parsed or ignored.
 - The size of this chunk is dependent on the number of bits set in the mask.
@@ -204,6 +209,8 @@ From LSB to MSB the order of registers in the bitfield is:
 | cr0 | cr3 | eax | ebx | ecx | edx | esi | edi | ebp | esp | cs | ds | es | fs | gs | ss | eip | eflags | dr6 | dr7 |
 
 For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes should be ignored.
+
+---
 
 #### c) `RAM `
 
@@ -231,6 +238,37 @@ For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes shoul
 
 ---
 
+#### e) `EA32`
+
+- Information about the calculated effective address when an instruction has a ModR/M (and possibly SIB) byte.
+  This information is not strictly needed to run the test, but is provided for convenience.
+
+- This chunk is only present in tests for the 386.
+
+| Field                | Size (bytes) | Description                          |
+|----------------------|--------------|--------------------------------------|
+| Register             | 1            | `uint8` effective segment register   |
+| Segment Selector     | 2            | `uint16` segment selector value      |
+| Segment Base Address | 4            | `uint32` segment base address        |
+| Segment Limit        | 4            | `uint32` segment limit               |
+| Offset               | 4            | `uint32` offset/index                |
+| Linear Address       | 4            | `uint32` calculated linear address   |
+| Physical Address     | 4            | `uint32` calculated physical_address |
+
+The segment register is encoded as an enumeration:
+
+| Value | Meaning |
+|-------|---------|
+| 0     | CS      |
+| 1     | SS      |
+| 2     | DS      |
+| 3     | ES      |
+| 4     | FS      |
+| 5     | GS      |
+| ...   | Invalid |
+
+---
+
 The following chunks are again outside the `INIT` and `FINA` chunks, but within a `TEST` chunk.
 
 ### 4. `CYCL`
@@ -250,7 +288,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 ### 4. `EXCP`
 
 - An optional chunk present if the test executed an exception or interrupt.
-- Currently only included with 80286 tests due to an improved test generator.
+- Currently only included with 286 and 386 tests due to an improved test generator.
 
 | Field     | Size (bytes) | Description                            |
 |-----------|--------------|----------------------------------------|
@@ -267,14 +305,11 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 ### 5. `HASH`
 
 - SHA-1 hash of the test data. The hashing method is subject to change. The hash is not intended to be used as error
-  detection,
-  but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for duplicate
-  hashes
-  before publication.
+  detection, but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for
+  duplicate hashes before publication.
 
 - The hexadecimal ASCII representation of a hash may be added to a **revocation list** in a test suite in the event that
-  a
-  problematic or incorrect test is discovered.
+  a problematic or incorrect test is discovered.
 
 | Field     | Size (bytes) | Description             |
 |-----------|--------------|-------------------------|
@@ -295,7 +330,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 - The 8088, 8086, V20 and V30 tests only contain the ALE pin in this field.
 - *On 80386, ALE is synthesized by the inverse of the ADS pin
-- **Only present in this bitfield on 80286. See `pin_bitfield1`
+- **Only present in this bitfield on 286 and 386. See `pin_bitfield1`
 
 ### Pin Bitfield #2 (`pin_bitfield1`)
 
@@ -303,8 +338,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 |-----|-------------|
 | 0   | BHE pin*    |
 
-- *This pin is valid on 8086 and V30. For 80286 and 80386, it was
-  moved to pin_bitfield0.
+- *This pin is valid on 8086 and V30. For the 286 and 386, it was moved to pin_bitfield0.
 
 ### Segment Status (`segment_status`)
 
