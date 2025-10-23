@@ -69,6 +69,10 @@ struct Args {
     /// Recurse into subdirectories
     #[arg(short = 'r', long)]
     recursive: bool,
+
+    /// Cycles spent in fetching.
+    #[arg(long, default_value = "0")]
+    cycle_subtract: usize,
 }
 
 fn flags_to_string(flags: &[MooCpuFlag]) -> String {
@@ -134,7 +138,7 @@ fn main() -> anyhow::Result<()> {
                     "<unknown>".to_string()
                 };
 
-                let s = tf.calc_stats();
+                let s = tf.calc_stats(args.cycle_subtract);
                 rows.push(FileRow::from_stats(path, mnemonic, s));
             }
             Err(e) => {
@@ -449,12 +453,12 @@ fn build_table_plot(rows: &[FileRow]) -> anyhow::Result<Plot> {
     let max_cycles: Vec<String> = rows.iter().map(|r| r.max_cycles.to_string()).collect();
     let avg_cycles: Vec<String> = rows.iter().map(|r| format!("{:.2}", r.avg_cycles)).collect();
     //let mem_reads: Vec<String> = rows.iter().map(|r| r.mem_reads.to_string()).collect();
-    let mem_writes: Vec<String> = rows.iter().map(|r| r.mem_writes.to_string()).collect();
+    //let mem_writes: Vec<String> = rows.iter().map(|r| r.mem_writes.to_string()).collect();
 
     let min_mr: Vec<String> = rows.iter().map(|r| r.min_mem_reads.to_string()).collect();
     let max_mr: Vec<String> = rows.iter().map(|r| r.max_mem_reads.to_string()).collect();
-    let min_mw: Vec<String> = rows.iter().map(|r| r.min_mem_reads.to_string()).collect();
-    let max_mw: Vec<String> = rows.iter().map(|r| r.max_mem_reads.to_string()).collect();
+    let min_mw: Vec<String> = rows.iter().map(|r| r.min_mem_writes.to_string()).collect();
+    let max_mw: Vec<String> = rows.iter().map(|r| r.max_mem_writes.to_string()).collect();
     let code_fetches: Vec<String> = rows.iter().map(|r| r.code_fetches.to_string()).collect();
     let io_reads: Vec<String> = rows.iter().map(|r| r.io_reads.to_string()).collect();
     let io_writes: Vec<String> = rows.iter().map(|r| r.io_writes.to_string()).collect();
