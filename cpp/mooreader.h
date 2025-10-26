@@ -1,3 +1,27 @@
+/*
+MIT License
+
+Copyright (c) 2025 Angela McEgo
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
+
 #pragma once
 
 #include <array>
@@ -8,9 +32,59 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
-struct MooReader
+namespace Moo
+{
+
+enum struct REG16 : uint8_t
+{
+	AX = 0,
+	BX = 1,
+	CX = 2,
+	DX = 3,
+	CS = 4,
+	SS = 5,
+	DS = 6,
+	ES = 7,
+	SP = 8,
+	BP = 9,
+	SI = 10,
+	DI = 11,
+	IP = 12,
+	FLAGS = 13,
+	
+	COUNT = 14
+};
+
+enum struct REG32 : uint8_t
+{
+	CR0 = 0,
+	CR3 = 1,
+	EAX = 2,
+	EBX = 3,
+	ECX = 4,
+	EDX = 5,
+	ESI = 6,
+	EDI = 7,
+	EBP = 8,
+	ESP = 9,
+	CS = 10,
+	DS = 11,
+	ES = 12,
+	FS = 13,
+	GS = 14,
+	SS = 15,
+	EIP = 16,
+	EFLAGS = 17,
+	DR6 = 18,
+	DR7 = 19,
+	
+	COUNT = 20
+};
+
+struct Reader
 {
 	std::vector<uint8_t> data;
 	size_t offset = 0;
@@ -49,6 +123,33 @@ struct MooReader
 	{
 		uint32_t bitmask{};
 		std::vector<uint32_t> values;
+		enum TYPE
+		{
+			REG_16,
+			REG_32,
+		} type{REG_16};
+		
+		bool HasRegister(REG16 reg) const
+		{
+			return bitmask&(1U<<uint32_t(reg));
+		}
+		uint16_t GetRegister(REG16 reg) const
+		{
+			if (type != REG_16)
+				throw std::runtime_error("Registers aren't 16 bit.");
+			return values[uint8_t(reg)];
+		}
+
+		bool HasRegister(REG32 reg) const
+		{
+			return bitmask&(1U<<uint32_t(reg));
+		}
+		uint32_t GetRegister(REG32 reg) const
+		{
+			if (type != REG_32)
+				throw std::runtime_error("Registers aren't 32 bit.");
+			return values[uint8_t(reg)];
+		}
 	};
 
 	struct RamEntry
@@ -103,9 +204,32 @@ struct MooReader
 		Exception exception;
 		bool has_hash = false;
 		std::array<uint8_t,20> hash = {};
+		
+		//TODO: fix ugly copypaste
+		uint32_t GetInitialRegister(REG16 reg) const
+		{
+			return init_state.regs.GetRegister(reg);
+		}
+		uint32_t GetFinalRegister(REG16 reg) const
+		{
+			if (final_state.regs.HasRegister(reg))
+				return final_state.regs.GetRegister(reg);
+			return init_state.regs.GetRegister(reg);
+		}
+		
+		uint32_t GetInitialRegister(REG32 reg) const
+		{
+			return init_state.regs.GetRegister(reg);
+		}
+		uint32_t GetFinalRegister(REG32 reg) const
+		{
+			if (final_state.regs.HasRegister(reg))
+				return final_state.regs.GetRegister(reg);
+			return init_state.regs.GetRegister(reg);
+		}
 	};
 
-	MooHeader header;
+	MooHeader mooheader;
 	std::vector<Test> tests;
 	
 	// We just xor the values, since the input is already random (a hash)
@@ -127,6 +251,9 @@ struct MooReader
 		}
 	};
 	std::unordered_map<std::array<uint8_t,20>,size_t,ArrayHash> test_map; // Maps hash to index in tests
+	//TODO: get test by hash
+	
+	std::unordered_set<std::array<uint8_t,20>,ArrayHash> revocation_list; // TODO: Actually implement loading this, and testing for this
 
 	void LoadFromFile(std::string filename)
 	{
@@ -153,10 +280,14 @@ struct MooReader
 	DATA Read()
 	{
 		if (offset + sizeof(DATA) > data.size())
+		{
 			throw std::runtime_error("Read past end of data");
+		}
 		DATA value = DATA(data[offset]);
-		for(int i=1; i<sizeof(DATA); ++i) //this loop will be optimized by the compiler
+		for(int i=1; i<sizeof(DATA); ++i) // This loop will be optimized by the compiler
+		{
 			value |= (DATA(data[offset+i])<<DATA(i*8));
+		}
 		offset += sizeof(DATA);
 		return value;
 	}
@@ -164,7 +295,9 @@ struct MooReader
 	void ReadBytes(void* dest, size_t count)
 	{
 		if (offset + count > data.size())
+		{
 			throw std::runtime_error("Read past end of data");
+		}
 		std::memcpy(dest, &data[offset], count);
 		offset += count;
 	}
@@ -180,33 +313,39 @@ struct MooReader
 		return header;
 	}
 
-	RegisterState ReadRegisters()
+	// REGS chunk
+	RegisterState ReadRegisters16()
 	{
 		RegisterState regs;
 		regs.bitmask = Read<uint16_t>();
+		regs.values.resize(size_t(REG16::COUNT));
+		regs.type = RegisterState::REG_16;
 		
 		// Count set bits and read that many register values
 		for (int i = 0; i < 16; i++)
 		{
 			if (regs.bitmask & (1 << i))
 			{
-				regs.values.push_back(Read<uint16_t>());
+				regs.values[i] = Read<uint16_t>();
 			}
 		}
 		return regs;
 	}
 
+	// RG32 chunk
 	RegisterState ReadRegisters32()
 	{
 		RegisterState regs;
 		regs.bitmask = Read<uint32_t>();
+		regs.values.resize(size_t(REG32::COUNT));
+		regs.type = RegisterState::REG_32;
 		
 		// Count set bits and read that many register values
 		for (int i = 0; i < 32; i++)
 		{
 			if (regs.bitmask & (1 << i))
 			{
-				regs.values.push_back(Read<uint32_t>());
+				regs.values[i] = Read<uint32_t>();
 			}
 		}
 		return regs;
@@ -247,7 +386,7 @@ struct MooReader
 			
 			if (chunk.type == "REGS")
 			{
-				state.regs = ReadRegisters();
+				state.regs = ReadRegisters16();
 			}
 			else if (chunk.type == "RG32")
 			{
@@ -298,9 +437,9 @@ struct MooReader
 		Test test;
 		ChunkHeader test_header = ReadChunkHeader();
 		
+		// Skipping non-TEST chunks
 		while (test_header.type != "TEST")
 		{
-			std::cout << "Skipping " << test_header.type << " chunk" << std::endl;
 			offset = test_header.data_end;
 			test_header = ReadChunkHeader();
 		}
@@ -365,29 +504,31 @@ struct MooReader
 	
 	void ReadMooHeader()
 	{
-		header.version = Read<uint8_t>();
-		ReadBytes(header.reserved, 3);
-		header.test_count = Read<uint32_t>();
+		mooheader.version = Read<uint8_t>();
+		ReadBytes(mooheader.reserved, 3);
+		mooheader.test_count = Read<uint32_t>();
 		
-		header.cpu_name.resize(4);
-		ReadBytes(header.cpu_name.data(), 4);
+		mooheader.cpu_name.resize(4);
+		ReadBytes(mooheader.cpu_name.data(), 4);
 		
 		// Add new CPUs here and the CPUType enum
-		if (header.cpu_name == "8088")
-			header.cpu_type = CPU8088;
-		else if (header.cpu_name == "8086")
-			header.cpu_type = CPU8086;
-		else if (header.cpu_name == "V20 ")
-			header.cpu_type = CPUV20;
-		else if (header.cpu_name == "V30 ")
-			header.cpu_type = CPUV30;
-		else if (header.cpu_name == "286 ")
-			header.cpu_type = CPU286;
-		else if (header.cpu_name == "386E")
-			header.cpu_type = CPU386E;
+		if (mooheader.cpu_name == "8088")
+			mooheader.cpu_type = CPU8088;
+		else if (mooheader.cpu_name == "8086")
+			mooheader.cpu_type = CPU8086;
+		else if (mooheader.cpu_name == "V20 ")
+			mooheader.cpu_type = CPUV20;
+		else if (mooheader.cpu_name == "V30 ")
+			mooheader.cpu_type = CPUV30;
+		else if (mooheader.cpu_name == "286 ")
+			mooheader.cpu_type = CPU286;
+		else if (mooheader.cpu_name == "C286")
+			mooheader.cpu_type = CPU286;
+		else if (mooheader.cpu_name == "386E")
+			mooheader.cpu_type = CPU386E;
 		else
 		{
-			throw std::runtime_error("Unsupported CPU type: " + header.cpu_name);
+			throw std::runtime_error("Unsupported CPU type: " + mooheader.cpu_name);
 		}
 	}
 
@@ -405,9 +546,9 @@ struct MooReader
 		offset = first_chunk_header.data_end;
 		
 		// Read all tests
-		tests.reserve(header.test_count);
+		tests.reserve(mooheader.test_count);
 
-		for (uint32_t i = 0; i < header.test_count; i++)
+		for (uint32_t i = 0; i < mooheader.test_count; i++)
 		{
 			tests.push_back(ReadTest());
 			test_map[tests.back().hash] = i;
@@ -417,7 +558,7 @@ struct MooReader
 	// Helper function to print bus status
 	const char* GetBusStatusName(uint8_t status) const
 	{
-		CPUType cpu = header.cpu_type;
+		CPUType cpu = mooheader.cpu_type;
 		
 		switch(cpu)
 		{
@@ -456,7 +597,7 @@ struct MooReader
 	// Helper function to print register name
 	const char* GetRegisterName(int bit_position) const
 	{
-		CPUType cpu = header.cpu_type;
+		CPUType cpu = mooheader.cpu_type;
 		
 		switch(cpu)
 		{
@@ -485,9 +626,9 @@ struct MooReader
 	}
 };
 
+};
 /*
 todo:
-revocation list?
+loading and testing revocation_list
 move GetTStateName and GetQueueOpName to this class
-try in granite
 */

@@ -23,15 +23,13 @@ const char* GetQueueOpName(uint8_t queue_op)
 
 void PrintRegisters(const MooReader& reader, const MooReader::RegisterState& regs)
 {
-    int value_index = 0;
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < 32; i++)
     {
         if (regs.bitmask & (1 << i))
         {
             std::cout << "      " << reader.GetRegisterName(i) << " = 0x" 
                       << std::hex << std::setw(4) << std::setfill('0') 
-                      << regs.values[value_index] << std::dec << "\n";
-			++value_index;
+                      << regs.values[i] << std::dec << "\n";
         }
     }
 }
@@ -164,9 +162,9 @@ int main(int argc, char* argv[])
         std::cout << "\n========================================\n";
         std::cout << "MOO File Information\n";
         std::cout << "========================================\n";
-        std::cout << "Version: " << (int)reader.header.version << "\n";
-        std::cout << "CPU: " << reader.header.cpu_name << "\n";
-        std::cout << "Test Count: " << reader.header.test_count << "\n";
+        std::cout << "Version: " << (int)reader.mooheader.version << "\n";
+        std::cout << "CPU: " << reader.mooheader.cpu_name << "\n";
+        std::cout << "Test Count: " << reader.mooheader.test_count << "\n";
         
         // Print tests
         int tests_to_show = std::min((int)reader.tests.size(), max_tests);
