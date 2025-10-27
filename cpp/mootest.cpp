@@ -21,7 +21,7 @@ const char* GetQueueOpName(uint8_t queue_op)
     return "?";
 }
 
-void PrintRegisters(const MooReader& reader, const MooReader::RegisterState& regs)
+void PrintRegisters(const Moo::Reader& reader, const Moo::Reader::RegisterState& regs)
 {
     for (int i = 0; i < 32; i++)
     {
@@ -34,7 +34,7 @@ void PrintRegisters(const MooReader& reader, const MooReader::RegisterState& reg
     }
 }
 
-void PrintTest(const MooReader::Test& test, const MooReader& reader)
+void PrintTest(const Moo::Reader::Test& test, const Moo::Reader& reader)
 {
     std::cout << "\n======================================\n";
     std::cout << "Test #" << test.index << ": " << test.name << "\n";
@@ -150,11 +150,13 @@ int main(int argc, char* argv[])
     
     try
     {
-        MooReader reader;
+        Moo::Reader reader;
         
         std::cout << "Loading MOO file: " << filename << "\n";
-        reader.LoadFromFile(filename);
+        reader.AddFromFile(filename);
         std::cout << "File loaded, size: " << reader.data.size() << " bytes\n";
+		reader.AddRevocationList("revocation_list.txt");
+		std::cout << "Revocation list loaded, found " << reader.revocation_list.size() << " revoked tests.\n";
         
         std::cout << "Analyzing...\n";
         
@@ -162,7 +164,7 @@ int main(int argc, char* argv[])
         std::cout << "\n========================================\n";
         std::cout << "MOO File Information\n";
         std::cout << "========================================\n";
-        std::cout << "Version: " << (int)reader.mooheader.version << "\n";
+        std::cout << "Version: " << (int)reader.mooheader.version_major << "." << (int)reader.mooheader.version_minor << "\n";
         std::cout << "CPU: " << reader.mooheader.cpu_name << "\n";
         std::cout << "Test Count: " << reader.mooheader.test_count << "\n";
         
