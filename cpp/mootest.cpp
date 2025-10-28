@@ -3,23 +3,6 @@
 #include <iomanip>
 #include <string>
 
-// Helper function to print T-state
-const char* GetTStateName(uint8_t t_state)
-{
-    const char* names[] = {"Ti", "T1", "T2", "T3", "T4", "Tw"};
-    if (t_state < 6)
-        return names[t_state];
-    return "UNKNOWN";
-}
-
-// Helper function to print queue operation
-const char* GetQueueOpName(uint8_t queue_op)
-{
-    const char* names[] = {"-", "F", "E", "S"};
-    if (queue_op < 4)
-        return names[queue_op];
-    return "?";
-}
 
 void PrintRegisters(const Moo::Reader& reader, const Moo::Reader::RegisterState& regs)
 {
@@ -105,8 +88,8 @@ void PrintTest(const Moo::Reader::Test& test, const Moo::Reader& reader)
                   << std::setfill('0') << cycle.address_latch
                   << " Data=0x" << std::setw(4) << cycle.data_bus
                   << std::dec << " Bus=" << reader.GetBusStatusName(cycle.bus_status)
-                  << " T=" << GetTStateName(cycle.t_state)
-                  << " Q=" << GetQueueOpName(cycle.queue_op_status) << "\n";
+                  << " T=" << reader.GetTStateName(cycle.t_state)
+                  << " Q=" << reader.GetQueueOpName(cycle.queue_op_status) << "\n";
     }
     
     // Print exception if present

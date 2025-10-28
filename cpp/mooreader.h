@@ -52,52 +52,76 @@ namespace Moo
 
 enum struct REG16 : uint8_t
 {
-	AX = 0,
-	BX = 1,
-	CX = 2,
-	DX = 3,
-	CS = 4,
-	SS = 5,
-	DS = 6,
-	ES = 7,
-	SP = 8,
-	BP = 9,
-	SI = 10,
-	DI = 11,
-	IP = 12,
-	FLAGS = 13,
+	AX = 0, BX = 1, CX = 2, DX = 3,
+	CS = 4, SS = 5, DS = 6, ES = 7,
+	SP = 8, BP = 9, SI = 10, DI = 11,
+	IP = 12, FLAGS = 13,
 	
 	COUNT = 14
 };
 
 enum struct REG32 : uint8_t
 {
-	CR0 = 0,
-	CR3 = 1,
-	EAX = 2,
-	EBX = 3,
-	ECX = 4,
-	EDX = 5,
-	ESI = 6,
-	EDI = 7,
-	EBP = 8,
-	ESP = 9,
-	CS = 10,
-	DS = 11,
-	ES = 12,
-	FS = 13,
-	GS = 14,
-	SS = 15,
-	EIP = 16,
-	EFLAGS = 17,
-	DR6 = 18,
-	DR7 = 19,
+	CR0 = 0, CR3 = 1,
+	EAX = 2, EBX = 3, ECX = 4, EDX = 5,
+	ESI = 6, EDI = 7, EBP = 8, ESP = 9,
+	CS = 10, DS = 11, ES = 12,FS = 13, GS = 14, SS = 15,
+	EIP = 16, EFLAGS = 17,
+	DR6 = 18, DR7 = 19,
 	
 	COUNT = 20
 };
 
 struct Reader
 {
+	void AddFromFile(std::string filename)
+	{
+		std::ifstream file(filename, std::ios::binary | std::ios::ate);
+		if (!file.is_open())
+		{
+			throw std::runtime_error("Failed to open file: " + filename);
+		}
+
+		std::streamsize size = file.tellg();
+		file.seekg(0, std::ios::beg);
+
+		data.resize(size);
+		if (!file.read(reinterpret_cast<char*>(data.data()), size))
+		{
+			throw std::runtime_error("Failed to read file: " + filename);
+		}
+		
+		Analyze();
+	}
+	
+	void AddRevocationList(const std::string& filename)
+	{
+		std::ifstream file(filename);
+		if (!file.is_open())
+		{
+			throw std::runtime_error("Failed to open file: " + filename);
+		}
+		
+		std::string line;
+		while (std::getline(file, line))
+		{
+			// Skip comment lines or lines with wrong length
+			if (line.empty() || line[0] == '#' || line.length() != 40)
+			{
+				continue;
+			}
+			
+			// Convert hex string to byte array
+			std::array<uint8_t, 20> hash;
+			for (size_t i = 0; i < 20; ++i)
+			{
+				hash[i] = HexToInt(line[2*i])*0x10 + HexToInt(line[2*i+1]);
+			}
+			
+			revocation_list.insert(hash);
+		}
+	}
+	
 	std::vector<uint8_t> data;
 	size_t offset = 0;
 
@@ -128,7 +152,7 @@ struct Reader
 		uint8_t version_minor{};
 		uint8_t reserved[2] = {};
 		uint32_t test_count{};
-		std::string cpu_name;
+		std::string cpu_name; //8 characters
 		CPUType cpu_type;
 		
 		uint16_t GetVersion()
@@ -192,12 +216,39 @@ struct Reader
 
 	struct Cycle
 	{
-		uint8_t pin_bitfield0;
+		struct BitField0
+		{
+			uint8_t ale   : 1;
+			uint8_t bhe   : 1;  // 80286/80386 only
+			uint8_t ready : 1;
+			uint8_t lock  : 1;
+			uint8_t       : 4;  // unused bits
+			
+			BitField0() {}
+			BitField0(uint8_t data)
+			{
+				std::memcpy(this, &data, sizeof(uint8_t));
+			}
+		};
+
+		struct BitField1
+		{
+			uint8_t bhe : 1;  // 8086/V30 only
+			uint8_t     : 7;  // unused bits
+
+			BitField1() {}
+			BitField1(uint8_t data)
+			{
+				std::memcpy(this, &data, sizeof(uint8_t));
+			}
+		};
+
+		BitField0 pin_bitfield0;
 		uint32_t address_latch;
 		uint8_t segment_status;
 		uint8_t memory_status;
 		uint8_t io_status;
-		uint8_t pin_bitfield1;
+		BitField1 pin_bitfield1;
 		uint16_t data_bus;
 		uint8_t bus_status;
 		uint8_t t_state;
@@ -224,28 +275,52 @@ struct Reader
 		bool has_hash = false;
 		std::array<uint8_t,20> hash = {};
 		
-		//TODO: fix ugly copypaste
-		//TODO: add register mask if requested
-		uint32_t GetInitialRegister(REG16 reg) const
+		//ugly copypaste.
+		//uses mask if requested and if the tests have RMSK/RM32 chunks
+		uint16_t GetInitialRegister(REG16 reg, bool masked) const
 		{
-			return init_state.regs.GetRegister(reg);
+			uint16_t ret = init_state.regs.GetRegister(reg);
+			if (masked && init_state.masks.HasRegister(reg))
+			{
+				ret &= init_state.masks.GetRegister(reg);
+			}
+			return ret;
 		}
-		uint32_t GetFinalRegister(REG16 reg) const
+		uint16_t GetFinalRegister(REG16 reg, bool masked) const
 		{
 			if (final_state.regs.HasRegister(reg))
-				return final_state.regs.GetRegister(reg);
-			return init_state.regs.GetRegister(reg);
+			{
+				uint16_t ret = final_state.regs.GetRegister(reg);
+				if (masked && final_state.masks.HasRegister(reg))
+				{
+					ret &= final_state.masks.GetRegister(reg);
+				}
+				return ret;
+			}
+			return GetInitialRegister(reg,masked);
 		}
 		
-		uint32_t GetInitialRegister(REG32 reg) const
+		uint32_t GetInitialRegister(REG32 reg, bool masked) const
 		{
-			return init_state.regs.GetRegister(reg);
+			uint32_t ret = init_state.regs.GetRegister(reg);
+			if (masked && init_state.masks.HasRegister(reg))
+			{
+				ret &= init_state.masks.GetRegister(reg);
+			}
+			return ret;
 		}
-		uint32_t GetFinalRegister(REG32 reg) const
+		uint32_t GetFinalRegister(REG32 reg, bool masked) const
 		{
 			if (final_state.regs.HasRegister(reg))
-				return final_state.regs.GetRegister(reg);
-			return init_state.regs.GetRegister(reg);
+			{
+				uint32_t ret = final_state.regs.GetRegister(reg);
+				if (masked && final_state.masks.HasRegister(reg))
+				{
+					ret &= final_state.masks.GetRegister(reg);
+				}
+				return ret;
+			}
+			return GetInitialRegister(reg,masked);
 		}
 	};
 
@@ -271,29 +346,7 @@ struct Reader
 		}
 	};
 	std::unordered_map<std::array<uint8_t,20>,size_t,ArrayHash> test_map; // Maps hash to index in tests
-	//TODO: get test by hash
-	
-	std::unordered_set<std::array<uint8_t,20>,ArrayHash> revocation_list; // TODO: Actually implement loading this, and testing for this
-
-	void AddFromFile(std::string filename)
-	{
-		std::ifstream file(filename, std::ios::binary | std::ios::ate);
-		if (!file.is_open())
-		{
-			throw std::runtime_error("Failed to open file: " + filename);
-		}
-
-		std::streamsize size = file.tellg();
-		file.seekg(0, std::ios::beg);
-
-		data.resize(size);
-		if (!file.read(reinterpret_cast<char*>(data.data()), size))
-		{
-			throw std::runtime_error("Failed to read file: " + filename);
-		}
-		
-		Analyze();
-	}
+	std::unordered_set<std::array<uint8_t,20>,ArrayHash> revocation_list;
 	
 	uint32_t HexToInt(char c)
 	{
@@ -306,38 +359,9 @@ struct Reader
 		throw std::runtime_error("Invalid value in revocation list.");
 	}
 	
-	void AddRevocationList(std::string filename)
+	bool IsRevoked(const Test& test)
 	{
-		std::ifstream file(filename);
-		if (!file.is_open()) {
-			// Handle error - file couldn't be opened
-			// You might want to throw an exception or log an error
-			return;
-		}
-		
-		std::string line;
-		while (std::getline(file, line))
-		{
-			// Skip comment lines or lines with wrong length
-			if (line.empty() || line[0] == '#' || line.length() != 40)
-			{
-				continue;
-			}
-			
-			// Convert hex string to byte array
-			std::array<uint8_t, 20> hash;
-			for (size_t i = 0; i < 20; ++i)
-			{
-				hash[i] = HexToInt(line[2*i])*0x10 + HexToInt(line[2*i+1]);
-			}
-			
-			revocation_list.insert(hash);
-		}
-	}
-	
-	bool IsRevoked(const std::array<uint8_t,20>& hash)
-	{
-		return revocation_list.find(hash) != revocation_list.end();
+		return revocation_list.find(test.hash) != revocation_list.end();
 	}
 
 	// Reading helper function
@@ -528,7 +552,7 @@ struct Reader
 			{
 				uint32_t name_len = Read<uint32_t>();
 				test.name.resize(name_len);
-				ReadBytes(&test.name[0], name_len);
+				ReadBytes(test.name.data(), name_len);
 			}
 			else if (chunk.type == "BYTS")
 			{
@@ -575,6 +599,15 @@ struct Reader
 		offset = test_header.data_end;
 		
 		return test;
+	}
+	
+	bool HasTest(const std::array<uint8_t,20>& hash)
+	{
+		return test_map.find(hash) != test_map.end();
+	}
+	Test& GetTest(const std::array<uint8_t,20>& hash)
+	{
+		return tests[test_map.at(hash)]; // Gives std::out_of_range if not found.
 	}
 	
 	void ReadMooHeader()
@@ -684,9 +717,7 @@ struct Reader
 	// Helper function to print register name
 	const char* GetRegisterName(int bit_position) const
 	{
-		CPUType cpu = mooheader.cpu_type;
-		
-		switch(cpu)
+		switch(mooheader.cpu_type)
 		{
 		case CPU8088:
 		case CPU8086:
@@ -712,20 +743,44 @@ struct Reader
 		return "unknown";
 	}
 	
-	bool HasTest(const std::array<uint8_t,20>& hash)
+	// Helper function to print T-state
+	const char* GetTStateName(uint8_t t_state) const
 	{
-		return test_map.find(hash) != test_map.end();
+		switch(mooheader.cpu_type)
+		{
+		case CPU8088:
+		case CPU8086:
+		case CPUV20:
+		case CPUV30:
+		{
+			const char* names[] = {"Ti", "T1", "T2", "T3", "T4", "Tw"};
+			if (t_state < 6)
+				return names[t_state];
+		}
+		case CPU286:
+		{
+			const char* names[] = {"Ti", "Ts", "Tc"};
+			if (t_state < 3)
+				return names[t_state];
+		}
+		case CPU386E:
+		{
+			const char* names[] = {"Ti", "T1", "T2"};
+			if (t_state < 3)
+				return names[t_state];
+		}
+		}
+		return "UNKNOWN";
+	}
+
+	// Helper function to print queue operation
+	const char* GetQueueOpName(uint8_t queue_op) const
+	{
+		const char* names[] = {"-", "F", "E", "S"};
+		if (queue_op < 4)
+			return names[queue_op];
+		return "?";
 	}
 };
 
 };
-/*
-todo:
-move GetTStateName and GetQueueOpName to this class
-expose bitfield types like ale() bhe() etc.
-#add support for 1.1 version (8 char length cpu name field)
-expose RMSK and RM32 fields (register masks, corresponds to REG and RG32 fields)
-#search for test by hash
-get test by hash
-#loading and testing revocation_list
-*/
