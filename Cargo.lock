@@ -466,6 +466,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "document-features"
+version = "0.2.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d4b8a88685455ed29a21542a33abd9cb6510b6b129abadabdcef0f4c55bc8f61"
+dependencies = [
+ "litrs",
+]
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -722,10 +731,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
 
 [[package]]
+name = "litrs"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11d3d7f243d5c5a8b9bb5d6dd2b1602c0cb0b9db1621bafc7ed66e35ff9fe092"
+
+[[package]]
 name = "log"
 version = "0.4.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "13dc2df351e3202783a1fe0d44375f7295ffb4049267b0f3018346dc122a1d94"
+
+[[package]]
+name = "marty_dasm"
+version = "0.1.0"
+source = "git+https://github.com/dbalsom/marty_dasm.git#1c2ac629c7b04ec862f83c001bd328aee5dcbda8"
+dependencies = [
+ "num-traits",
+ "serde",
+ "thiserror",
+]
 
 [[package]]
 name = "memchr"
@@ -747,6 +772,7 @@ name = "moo-rs"
 version = "0.3.0"
 dependencies = [
  "binrw",
+ "document-features",
  "env_logger",
  "flate2",
  "log",
@@ -781,6 +807,7 @@ dependencies = [
  "bpaf",
  "env_logger",
  "log",
+ "marty_dasm",
  "moo-rs",
  "once_cell",
  "rayon",

@@ -20,24 +20,30 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-use std::path::PathBuf;
+use std::fmt::Display;
 
-use crate::args::{hash_parser, in_path_parser, index_parser};
+use binrw::binrw;
 
-use bpaf::{construct, Parser};
-
-#[derive(Clone, Debug)]
-pub(crate) struct CheckParams {
-    pub(crate) in_path: PathBuf,
-    pub(crate) hash:    Option<String>,
-    pub(crate) index:   Option<usize>,
+#[derive(Clone, Debug, PartialEq)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptor16 {
+    pub access: u32,
+    pub base:   u32,
+    pub limit:  u32,
 }
 
-pub(crate) fn check_parser() -> impl Parser<CheckParams> {
-    let in_path = in_path_parser();
-
-    let hash = hash_parser().optional();
-    let index = index_parser().optional();
-
-    construct!(CheckParams { in_path, hash, index })
+impl Display for MooDescriptor16 {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            fmt,
+            "Access:{:08X} Base:{:08X} Limit:{:08X}",
+            self.access, self.base, self.limit,
+        )
+    }
 }
+
+#[derive(Clone, Debug, PartialEq)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptors16 {}

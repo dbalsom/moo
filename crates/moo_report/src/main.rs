@@ -41,10 +41,7 @@ use std::{
 };
 use walkdir::WalkDir;
 
-use moo::{
-    prelude::*,
-    types::{flags::MooCpuFlag, MooRegister},
-};
+use moo::{prelude::*, types::flags::MooCpuFlag};
 
 #[derive(Clone, Debug, Serialize)]
 struct ColorGrid(Vec<Vec<String>>);

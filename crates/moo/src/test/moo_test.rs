@@ -20,21 +20,33 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-
 use crate::{
     prelude::MooCycleState,
+    registers::{MooRegister, MooRegisterDiff, MooRegisters},
     test::{comparison::MooComparison, test_state::MooTestState},
     types::{
+        chunks::{MooBytesChunk, MooChunkType, MooNameChunk, MooTestChunk},
         flags::{MooCpuFlag, MooCpuFlagsDiff},
+        MooCpuFamily,
+        MooCpuMode,
         MooException,
-        MooRamEntries,
-        MooRamEntry,
-        MooRegister,
-        MooRegisterDiff,
-        MooRegisters,
+        MooOperandSize,
+        MooSegmentSize,
         MooTestGenMetadata,
     },
 };
+use binrw::{BinResult, BinWrite};
+use sha1::Digest;
+use std::io::{Cursor, Seek, Write};
+
+macro_rules! push_or_return {
+    ($vec:expr, $item:expr, $ret:expr) => {{
+        $vec.push($item);
+        if $ret {
+            return $vec;
+        }
+    }};
+}
 
 pub struct MooTest {
     pub(crate) name: String,
@@ -47,7 +59,27 @@ pub struct MooTest {
     pub(crate) hash: Option<[u8; 20]>,
 }
 
+/// An individual test case for a particular CPU.
+/// A `MooTest` at minimum contains:
+///  - A human-readable name
+///  - The raw bytes that comprise the instruction(s) being tested
+///  - A initial CPU state containing register and memory values (as a [MooTestState])
+///  - A final CPU state containing register and memory values (as a [MooTestState])
+///  - A sequence of [MooCycleState] entries representing the cpu cycles that occurred
+///    during execution of the instruction(s)
+///  - An optional [MooException] if an exception was raised during execution
+///  - A SHA-1 hash of the test used to uniquely identify it
 impl MooTest {
+    /// Create a new [MooTest].
+    /// # Arguments
+    /// * `name` - A human-readable name for the test. This is typically the disassembly of the instruction(s) being tested.
+    /// * `gen_metadata` - An optional [MooTestGenMetadata](crate::types::MooTestGenMetadata) struct containing information about how the test was generated.
+    /// * `bytes` - The raw bytes that comprise the instruction(s) being tested.
+    /// * `initial_state` - A [MooTestState] struct describing the initial CPU state before execution.
+    /// * `final_state` - A [MooTestState] struct describing the final CPU state after execution.
+    /// * `cycles` - A slice of [MooCycleState] structs representing the cpu cycles that occurred during execution.
+    /// * `exception` - An optional [MooException] if an exception was raised during execution.
+    /// * `hash` - An optional SHA-1 hash of the test used to uniquely identify it. If not provided, the hash will be calculated when the test is written using [MooTestFile::write](crate::prelude::MooTestFile::write).
     pub fn new(
         name: String,
         gen_metadata: Option<MooTestGenMetadata>,
@@ -70,28 +102,49 @@ impl MooTest {
         }
     }
 
+    /// Retrieve the human-readable name of the test (typically the disassembly of the instruction(s) being tested).
     pub fn name(&self) -> &str {
         &self.name
     }
+
+    /// Retrieve the optional test generation metadata for the test.
+    pub fn gen_metadata(&self) -> Option<&MooTestGenMetadata> {
+        self.gen_metadata.as_ref()
+    }
+
+    /// Retrieve a reference to a slice of the raw bytes that comprise the instruction(s) being tested.
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
-    pub fn initial_regs(&self) -> &MooRegisters {
-        &self.initial_state.regs
+
+    /// Retrieve a reference to the [MooTestState] representing the initial CPU state.
+    pub fn initial_state(&self) -> &MooTestState {
+        &self.initial_state
     }
-    pub fn final_regs(&self) -> &MooRegisters {
-        &self.final_state.regs
+
+    /// Retrieve a mutable reference to the [MooTestState] representing the initial CPU state.
+    pub fn initial_state_mut(&mut self) -> &mut MooTestState {
+        &mut self.initial_state
     }
-    pub fn initial_mem_state(&self) -> &MooRamEntries {
-        &self.initial_state.ram
+
+    /// Retrieve a reference to the [MooTestState] representing the final CPU state.
+    pub fn final_state(&self) -> &MooTestState {
+        &self.final_state
     }
-    pub fn final_mem_state(&self) -> &MooRamEntries {
-        &self.final_state.ram
+
+    /// Retrieve a mutable reference to the [MooTestState] representing the final CPU state.
+    pub fn final_state_mut(&mut self) -> &mut MooTestState {
+        &mut self.final_state
     }
+
+    /// Retrieve a reference to a slice of the [MooCycleState] entries representing the cpu cycles
+    /// that occurred during execution.
     pub fn cycles(&self) -> &[MooCycleState] {
         &self.cycles
     }
 
+    /// Retrieve the SHA-1 hash of the test as a hexadecimal ASCII string.
+    /// If the hash is not available, returns the literal string "##NOHASH##".
     pub fn hash_string(&self) -> String {
         if let Some(hash) = &self.hash {
             hash.iter().map(|b| format!("{:02x}", b)).collect()
@@ -101,55 +154,95 @@ impl MooTest {
         }
     }
 
+    /// Retrieve an optional reference to any [MooException].
+    /// A [MooException] will be present if an exception was raised during test execution.
     pub fn exception(&self) -> Option<&MooException> {
         self.exception.as_ref()
     }
 
-    pub fn compare(&self, other: &MooTest) -> MooComparison {
+    /// Retrieve an optional mutable reference to any [MooException].
+    /// A [MooException] will be present if an exception was raised during test execution.
+    pub fn exception_mut(&mut self) -> Option<&mut MooException> {
+        self.exception.as_mut()
+    }
+
+    /// Compare two MooTests and return a vector of differences as [MooComparison] entries.
+    /// Arguments:
+    /// * `other` - The other [MooTest] to compare against.
+    /// * `return_first` - If true, the function will return after finding the first difference.
+    /// Returns:
+    /// A vector of [MooComparison] entries representing the differences found between the two tests.
+    /// If no differences are found, the vector will be empty.
+    /// If `return_first` is true, the vector will contain at most one entry.
+    pub fn compare(&self, other: &MooTest, return_first: bool) -> Vec<MooComparison> {
+        let mut differences = Vec::new();
+
         if self.final_state.regs != other.final_state.regs {
-            return MooComparison::RegisterMismatch;
+            push_or_return!(differences, MooComparison::RegisterMismatch, return_first);
         }
         if self.cycles.len() != other.cycles.len() {
-            return MooComparison::CycleCountMismatch(self.cycles.len(), other.cycles.len());
+            push_or_return!(
+                differences,
+                MooComparison::CycleCountMismatch(self.cycles.len(), other.cycles.len()),
+                return_first
+            );
         }
         for ((i, this_cycle), other_cycle) in self.cycles.iter().enumerate().zip(other.cycles.iter()) {
             // The address bus is inconsistent except at ALE, so only compare if ALE bit is set.
             if this_cycle.pins0 & MooCycleState::PIN_ALE != 0 {
                 if other_cycle.pins0 & MooCycleState::PIN_ALE == 0 {
-                    return MooComparison::ALEMismatch(i, true, false);
+                    push_or_return!(differences, MooComparison::ALEMismatch(i, true, false), return_first);
                 }
 
                 if this_cycle.address_bus != other_cycle.address_bus {
-                    return MooComparison::CycleAddressMismatch(this_cycle.address_bus, other_cycle.address_bus);
+                    push_or_return!(
+                        differences,
+                        MooComparison::CycleAddressMismatch(this_cycle.address_bus, other_cycle.address_bus),
+                        return_first
+                    );
                 }
 
                 if this_cycle.bus_state != other_cycle.bus_state {
-                    return MooComparison::CycleBusMismatch(this_cycle.bus_state, other_cycle.bus_state);
+                    push_or_return!(
+                        differences,
+                        MooComparison::CycleBusMismatch(this_cycle.bus_state, other_cycle.bus_state),
+                        return_first
+                    );
                 }
             }
             else if other_cycle.pins0 & MooCycleState::PIN_ALE != 0 {
-                return MooComparison::ALEMismatch(i, false, true);
+                push_or_return!(differences, MooComparison::ALEMismatch(i, false, true), return_first);
             }
         }
 
         for (this_ram_entry, other_ram_entry) in self
-            .initial_state
-            .ram
-            .entries
+            .initial_state()
+            .ram()
             .iter()
-            .zip(other.initial_state.ram.entries.iter())
+            .zip(other.initial_state().ram().iter())
         {
             if this_ram_entry.address != other_ram_entry.address {
-                return MooComparison::MemoryAddressMismatch(*this_ram_entry, *other_ram_entry);
+                push_or_return!(
+                    differences,
+                    MooComparison::MemoryAddressMismatch(*this_ram_entry, *other_ram_entry),
+                    return_first
+                );
             }
             if this_ram_entry.value != other_ram_entry.value {
-                return MooComparison::MemoryValueMismatch(*this_ram_entry, *other_ram_entry);
+                push_or_return!(
+                    differences,
+                    MooComparison::MemoryValueMismatch(*this_ram_entry, *other_ram_entry),
+                    return_first
+                );
             }
         }
 
-        MooComparison::Equal
+        differences
     }
 
+    /// Determine the differences in CPU flags between the initial and final states.
+    /// Returns a [MooCpuFlagsDiff] struct containing the flags that were set, cleared,
+    /// and those that remained unmodified.
     pub fn diff_flags(&self) -> MooCpuFlagsDiff {
         let mut set_flags: Vec<MooCpuFlag> = Vec::new();
         let mut cleared_flags: Vec<MooCpuFlag> = Vec::new();
@@ -458,5 +551,141 @@ impl MooTest {
         }
 
         diff_regs
+    }
+
+    pub fn cpu_mode(&self, _cpu_family: impl Into<MooCpuFamily>) -> MooCpuMode {
+        // A lack of any descriptors indicates real mode.
+        if self.initial_state.descriptors.is_none() {
+            return MooCpuMode::RealMode;
+        }
+        else {
+            // For 286, we need to look at the MSW register mode bit.
+            // For 386, we need to look at the CR0 bits and flag bits.
+        }
+        MooCpuMode::RealMode
+    }
+
+    pub fn segment_size(&self, cpu_family: impl Into<MooCpuFamily>) -> MooSegmentSize {
+        match self.cpu_mode(cpu_family) {
+            MooCpuMode::RealMode => MooSegmentSize::Sixteen,
+            MooCpuMode::ProtectedMode => {
+                // In protected mode, segment size is determined by the descriptor.
+                if let Some(_descriptors) = &self.initial_state.descriptors {
+                    // if let Some(cs_descriptor) = descriptors.get(&MooRegister::CS) {
+                    //     return cs_descriptor.size;
+                    // }
+                }
+                MooSegmentSize::Sixteen // Default to 16 if unknown
+            }
+            _ => MooSegmentSize::Sixteen, // Default to 16 for other modes
+        }
+    }
+
+    pub fn operand_size(&self, cpu_family: impl Into<MooCpuFamily>) -> MooOperandSize {
+        let cpu_family = cpu_family.into();
+        match cpu_family {
+            MooCpuFamily::Intel8086 | MooCpuFamily::NecV30 | MooCpuFamily::Intel80186 | MooCpuFamily::Intel80286 => {
+                MooOperandSize::Sixteen
+            }
+            MooCpuFamily::Intel80386 => self
+                .segment_size(cpu_family)
+                .operand_size(self.has_operand_size_override(cpu_family)),
+        }
+    }
+
+    pub fn has_operand_size_override(&self, cpu_family: impl Into<MooCpuFamily>) -> bool {
+        let cpu_family = cpu_family.into();
+        match cpu_family {
+            MooCpuFamily::Intel8086 | MooCpuFamily::NecV30 | MooCpuFamily::Intel80186 | MooCpuFamily::Intel80286 => {
+                false
+            }
+            MooCpuFamily::Intel80386 => {
+                // In 386 mode, check if the operand size override prefix (0x66) is present in the instruction bytes.
+                self.bytes.contains(&0x66)
+            }
+        }
+    }
+
+    pub fn has_address_size_override(&self, cpu_family: impl Into<MooCpuFamily>) -> bool {
+        let cpu_family = cpu_family.into();
+        match cpu_family {
+            MooCpuFamily::Intel8086 | MooCpuFamily::NecV30 | MooCpuFamily::Intel80186 | MooCpuFamily::Intel80286 => {
+                false
+            }
+            MooCpuFamily::Intel80386 => {
+                // In 386 mode, check if the address size override prefix (0x67) is present in the instruction bytes.
+                self.bytes.contains(&0x67)
+            }
+        }
+    }
+
+    /// Write a [MooTest] to an implementor of [Write](std::io::Write) + [Seek](std::io::Seek).
+    /// Arguments:
+    /// * `index` - The index of the test.
+    /// * `writer` - The writer to write the MOO file to.
+    /// * `preserve_hash` - If true, preserves the existing test hash, if present. If false, the
+    ///      test hash will be recalculated from the test data. The test hash will be recalculated if
+    ///      missing, regardless of this flag.
+    pub fn write<WS: Write + Seek>(&self, index: usize, writer: &mut WS, preserve_hash: bool) -> BinResult<()> {
+        let mut test_buffer = Cursor::new(Vec::new());
+
+        // Write the test chunk body.
+        MooTestChunk { index: index as u32 }.write(&mut test_buffer)?;
+
+        // Write the generator metadata chunk if present.
+        if let Some(gen_metadata) = &self.gen_metadata {
+            MooChunkType::GeneratorMetadata.write(&mut test_buffer, gen_metadata)?;
+        }
+
+        // Write the name chunk.
+        let name_chunk = MooNameChunk {
+            len:  self.name.len() as u32,
+            name: self.name.clone(),
+        };
+        MooChunkType::Name.write(&mut test_buffer, &name_chunk)?;
+
+        // Write the bytes chunk.
+        let bytes_chunk = MooBytesChunk {
+            len:   self.bytes.len() as u32,
+            bytes: self.bytes.clone(),
+        };
+        MooChunkType::Bytes.write(&mut test_buffer, &bytes_chunk)?;
+
+        // Write the initial state chunk.
+        self.initial_state.write(&mut test_buffer)?;
+
+        // Write the final state chunk.
+        self.final_state.write(&mut test_buffer)?;
+
+        let mut cycle_buffer = Cursor::new(Vec::new());
+        // Write the count of cycles to the cycle buffer.
+        (self.cycles.len() as u32).write_le(&mut cycle_buffer)?;
+        // Write all the cycles to the cycle buffer.
+        for cycle in &self.cycles {
+            cycle.write(&mut cycle_buffer)?;
+        }
+
+        // Write the cycles chunk.
+        MooChunkType::CycleStates.write(&mut test_buffer, &cycle_buffer.into_inner())?;
+
+        // If an exception is present, write the exception chunk.
+        if let Some(exception) = &self.exception {
+            MooChunkType::Exception.write(&mut test_buffer, exception)?;
+        }
+
+        if preserve_hash && self.hash.is_some() {
+            // Write the existing hash chunk.
+            MooChunkType::Hash.write(&mut test_buffer, self.hash.as_ref().unwrap())?;
+        }
+        else {
+            // Create the SHA1 hash from the current state of the test buffer.
+            let hash = sha1::Sha1::digest(&test_buffer.get_ref()).to_vec();
+            MooChunkType::Hash.write(&mut test_buffer, &hash)?;
+        }
+
+        // Write the test chunk.
+        MooChunkType::TestHeader.write(writer, &test_buffer.into_inner())?;
+
+        Ok(())
     }
 }

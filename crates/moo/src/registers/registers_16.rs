@@ -220,8 +220,6 @@ impl From<(&MooRegisters16Init, &MooRegisters16Init)> for MooRegisters16 {
 impl MooRegisters16 {
     pub const ALL_SET: u16 = 0x3FFF; // All registers set mask
 
-    pub const SHUTDOWN_BIT: u16 = 0x8000; // If set, indicates the CPU was shutdown.
-
     pub const AX_MASK: u16 = 0x0001; // AX register mask
     pub const BX_MASK: u16 = 0x0002; // BX register mask
     pub const CX_MASK: u16 = 0x0004; // CX register mask
@@ -256,17 +254,21 @@ impl MooRegisters16 {
     pub const FLAG_NT: u16          = 0b0100_0000_0000_0000; // Nested Task
     pub const FLAG_IOPL0: u16       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u16       = 0b0010_0000_0000_0000; // IO Privilege Level
-
-    pub fn set_shutdown(&mut self, state: bool) {
-        if state {
-            // Clear out all other bits.
-            self.reg_mask = Self::SHUTDOWN_BIT;
-        }
-        else {
-            self.reg_mask &= !Self::SHUTDOWN_BIT;
+    
+    pub fn sp_linear_real(&self) -> Option<u32> {
+        if self.reg_mask & Self::SP_MASK != 0 && self.reg_mask & Self::SS_MASK != 0 {
+            Some(((self.ss as u32) << 4) + (self.sp as u32))
+        } else {
+            None
         }
     }
-
+    pub fn csip_linear_real(&self) -> Option<u32> {
+        if self.reg_mask & Self::IP_MASK != 0 && self.reg_mask & Self::CS_MASK != 0 {
+            Some(((self.cs as u32) << 4) + (self.ip as u32))
+        } else {
+            None
+        }
+    }
     pub fn set_ax(&mut self, value: u16) {
         self.reg_mask |= Self::AX_MASK;
         self.ax = value;
@@ -424,7 +426,7 @@ impl MooRegisters16 {
     }
 
     pub fn is_valid(&self) -> bool {
-        if self.reg_mask & Self::IP_MASK != 0 {
+        if self.reg_mask & Self::FLAGS_MASK != 0 {
             // We have flags
             if self.flags & 0x0002 == 0 {
                 // Reserved flag bit 1 cannot be clear

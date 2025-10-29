@@ -1,26 +1,3 @@
-use std::fmt::{Debug, Display};
-
-use crate::types::MooCpuType;
-use binrw::binrw;
-
-#[derive(Clone)]
-#[binrw]
-#[brw(little)]
-pub struct MooDescriptor32 {
-    pub access: u32,
-    pub base:   u32,
-    pub limit:  u32,
-}
-
-impl Display for MooDescriptor32 {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            fmt,
-            "Access:{:08X} Base:{:08X} Limit:{:08X}",
-            self.access, self.base, self.limit,
-        )
-    }
-}
 /*
     MOO-rs Copyright 2025 Daniel Balsom
     https://github.com/dbalsom/moo
@@ -44,10 +21,10 @@ impl Display for MooDescriptor32 {
     DEALINGS IN THE SOFTWARE.
 */
 
-#[derive(Clone)]
-#[binrw]
-#[brw(little)]
-pub struct MooDescriptors32 {}
+use std::fmt::{Debug, Display};
+
+use crate::types::MooCpuType;
+use binrw::binrw;
 
 #[derive(Clone)]
 pub struct MooRegisters32Init {
@@ -199,71 +176,71 @@ impl From<&MooRegisters32Init> for MooRegisters32 {
     }
 }
 
-/// Convert a tuple of two [MooRegisters32Init] into a [MooRegisters1] based on the difference between them.
+/// Convert a tuple of two [MooRegisters32Init] into a [MooRegisters32] based on the difference between them.
 impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
     fn from(init: (&MooRegisters32Init, &MooRegisters32Init)) -> Self {
         let mut reg_mask = 0u32;
 
         if init.0.cr0 != init.1.cr0 {
-            reg_mask |= MooRegisters32::CR0_MASK;
+            reg_mask |= Self::CR0_MASK;
         }
         if init.0.cr3 != init.1.cr3 {
-            reg_mask |= MooRegisters32::CR3_MASK;
+            reg_mask |= Self::CR3_MASK;
         }
         if init.0.eax != init.1.eax {
-            reg_mask |= MooRegisters32::EAX_MASK;
+            reg_mask |= Self::EAX_MASK;
         }
         if init.0.ebx != init.1.ebx {
-            reg_mask |= MooRegisters32::EBX_MASK;
+            reg_mask |= Self::EBX_MASK;
         }
         if init.0.ecx != init.1.ecx {
-            reg_mask |= MooRegisters32::ECX_MASK;
+            reg_mask |= Self::ECX_MASK;
         }
         if init.0.edx != init.1.edx {
-            reg_mask |= MooRegisters32::EDX_MASK;
+            reg_mask |= Self::EDX_MASK;
         }
         if init.0.cs != init.1.cs {
-            reg_mask |= MooRegisters32::CS_MASK;
+            reg_mask |= Self::CS_MASK;
         }
         if init.0.ds != init.1.ds {
-            reg_mask |= MooRegisters32::DS_MASK;
+            reg_mask |= Self::DS_MASK;
         }
         if init.0.es != init.1.es {
-            reg_mask |= MooRegisters32::ES_MASK;
+            reg_mask |= Self::ES_MASK;
         }
         if init.0.fs != init.1.fs {
-            reg_mask |= MooRegisters32::FS_MASK;
+            reg_mask |= Self::FS_MASK;
         }
         if init.0.gs != init.1.gs {
-            reg_mask |= MooRegisters32::GS_MASK;
+            reg_mask |= Self::GS_MASK;
         }
         if init.0.ss != init.1.ss {
-            reg_mask |= MooRegisters32::SS_MASK;
+            reg_mask |= Self::SS_MASK;
         }
 
         if init.0.esp != init.1.esp {
-            reg_mask |= MooRegisters32::ESP_MASK
+            reg_mask |= Self::ESP_MASK
         }
         if init.0.ebp != init.1.ebp {
-            reg_mask |= MooRegisters32::EBP_MASK
+            reg_mask |= Self::EBP_MASK
         }
         if init.0.esi != init.1.esi {
-            reg_mask |= MooRegisters32::ESI_MASK
+            reg_mask |= Self::ESI_MASK
         }
         if init.0.edi != init.1.edi {
-            reg_mask |= MooRegisters32::EDI_MASK
+            reg_mask |= Self::EDI_MASK
         }
         if init.0.eip != init.1.eip {
-            reg_mask |= MooRegisters32::EIP_MASK
+            reg_mask |= Self::EIP_MASK
         }
         if init.0.eflags != init.1.eflags {
-            reg_mask |= MooRegisters32::EFLAGS_MASK
+            reg_mask |= Self::EFLAGS_MASK
         }
         if init.0.dr6 != init.1.dr6 {
-            reg_mask |= MooRegisters32::DR6_MASK;
+            reg_mask |= Self::DR6_MASK;
         }
         if init.0.dr7 != init.1.dr7 {
-            reg_mask |= MooRegisters32::DR7_MASK;
+            reg_mask |= Self::DR7_MASK;
         }
 
         Self {
@@ -294,65 +271,65 @@ impl From<(&MooRegisters32Init, &MooRegisters32Init)> for MooRegisters32 {
 
 impl Debug for MooRegisters32 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut mr = fmt.debug_struct("MooRegisters32");
-        if self.reg_mask & MooRegisters32::CR0_MASK != 0 {
+        let mut mr = fmt.debug_struct("Self");
+        if self.reg_mask & Self::CR0_MASK != 0 {
             mr.field("cr0", &format_args!("{:08X}", self.cr0));
         }
-        if self.reg_mask & MooRegisters32::CR3_MASK != 0 {
+        if self.reg_mask & Self::CR3_MASK != 0 {
             mr.field("cr3", &format_args!("{:08X}", self.cr3));
         }
-        if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
+        if self.reg_mask & Self::EAX_MASK != 0 {
             mr.field("eax", &format_args!("{:08X}", self.eax));
         }
-        if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
+        if self.reg_mask & Self::EBX_MASK != 0 {
             mr.field("ebx", &format_args!("{:08X}", self.ebx));
         }
-        if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
+        if self.reg_mask & Self::ECX_MASK != 0 {
             mr.field("ecx", &format_args!("{:08X}", self.ecx));
         }
-        if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
+        if self.reg_mask & Self::EDX_MASK != 0 {
             mr.field("edx", &format_args!("{:08X}", self.edx));
         }
-        if self.reg_mask & MooRegisters32::ESI_MASK != 0 {
+        if self.reg_mask & Self::ESI_MASK != 0 {
             mr.field("esi", &format_args!("{:08X}", self.esi));
         }
-        if self.reg_mask & MooRegisters32::EDI_MASK != 0 {
+        if self.reg_mask & Self::EDI_MASK != 0 {
             mr.field("edi", &format_args!("{:08X}", self.edi));
         }
-        if self.reg_mask & MooRegisters32::EBP_MASK != 0 {
+        if self.reg_mask & Self::EBP_MASK != 0 {
             mr.field("ebp", &format_args!("{:08X}", self.ebp));
         }
-        if self.reg_mask & MooRegisters32::ESP_MASK != 0 {
+        if self.reg_mask & Self::ESP_MASK != 0 {
             mr.field("esp", &format_args!("{:08X}", self.esp));
         }
-        if self.reg_mask & MooRegisters32::CS_MASK != 0 {
+        if self.reg_mask & Self::CS_MASK != 0 {
             mr.field("cs", &format_args!("{:04X}", self.cs));
         }
-        if self.reg_mask & MooRegisters32::DS_MASK != 0 {
+        if self.reg_mask & Self::DS_MASK != 0 {
             mr.field("ds", &format_args!("{:04X}", self.ds));
         }
-        if self.reg_mask & MooRegisters32::ES_MASK != 0 {
+        if self.reg_mask & Self::ES_MASK != 0 {
             mr.field("es", &format_args!("{:04X}", self.es));
         }
-        if self.reg_mask & MooRegisters32::FS_MASK != 0 {
+        if self.reg_mask & Self::FS_MASK != 0 {
             mr.field("fs", &format_args!("{:04X}", self.fs));
         }
-        if self.reg_mask & MooRegisters32::GS_MASK != 0 {
+        if self.reg_mask & Self::GS_MASK != 0 {
             mr.field("gs", &format_args!("{:04X}", self.gs));
         }
-        if self.reg_mask & MooRegisters32::SS_MASK != 0 {
+        if self.reg_mask & Self::SS_MASK != 0 {
             mr.field("ss", &format_args!("{:04X}", self.ss));
         }
-        if self.reg_mask & MooRegisters32::EIP_MASK != 0 {
+        if self.reg_mask & Self::EIP_MASK != 0 {
             mr.field("eip", &format_args!("{:08X}", self.eip));
         }
-        if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+        if self.reg_mask & Self::EFLAGS_MASK != 0 {
             mr.field("eflags", &format_args!("{:08X}", self.eflags));
         }
-        if self.reg_mask & MooRegisters32::DR6_MASK != 0 {
+        if self.reg_mask & Self::DR6_MASK != 0 {
             mr.field("dr6", &format_args!("{:08X}", self.dr6));
         }
-        if self.reg_mask & MooRegisters32::DR7_MASK != 0 {
+        if self.reg_mask & Self::DR7_MASK != 0 {
             mr.field("dr7", &format_args!("{:08X}", self.dr7));
         }
         mr.finish()
@@ -386,8 +363,6 @@ impl MooRegisters32 {
     pub const DR6_MASK: u32 = 0x0004_0000; // DR6 register mask
     pub const DR7_MASK: u32 = 0x0008_0000; // DR7 register mask
 
-    pub const SHUTDOWN_BIT: u32 = 0x8000_0000; // Indicates if the CPU shutdown. This should be the only bit set if set.
-
     pub const FLAG_CARRY: u32       = 0b0000_0000_0000_0001;
     pub const FLAG_RESERVED1: u32   = 0b0000_0000_0000_0010;
     pub const FLAG_PARITY: u32      = 0b0000_0000_0000_0100;
@@ -406,282 +381,286 @@ impl MooRegisters32 {
     pub const FLAG_IOPL0: u32       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u32       = 0b0010_0000_0000_0000; // IO Privilege Level
 
-    pub fn set_shutdown(&mut self, state: bool) {
-        if state {
-            // Clear out all other bits.
-            self.reg_mask = MooRegisters32::SHUTDOWN_BIT;
-        }
-        else {
-            self.reg_mask &= !MooRegisters32::SHUTDOWN_BIT;
+    pub fn sp_linear_real(&self) -> Option<u32> {
+        if self.reg_mask & Self::ESP_MASK != 0 && self.reg_mask & Self::SS_MASK != 0 {
+            Some((self.ss << 4).wrapping_add(self.esp))
+        } else {
+            None
         }
     }
-
+    pub fn csip_linear_real(&self) -> Option<u32> {
+        if self.reg_mask & Self::EIP_MASK != 0 && self.reg_mask & Self::CS_MASK != 0 {
+            Some(((self.cs) << 4) + (self.eip as u32))
+        } else {
+            None
+        }
+    }
     pub fn set_eax(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EAX_MASK;
+        self.reg_mask |= Self::EAX_MASK;
         self.eax = value;
     }
     pub fn set_ax(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::EAX_MASK;
-        self.eax = (self.eax & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::EAX_MASK;
+        self.eax = (self.eax & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_ebx(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EBX_MASK;
+        self.reg_mask |= Self::EBX_MASK;
         self.ebx = value;
     }
     pub fn set_bx(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::EBX_MASK;
-        self.ebx = (self.ebx & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::EBX_MASK;
+        self.ebx = (self.ebx & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_ecx(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::ECX_MASK;
+        self.reg_mask |= Self::ECX_MASK;
         self.ecx = value;
     }
     pub fn set_cx(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::ECX_MASK;
-        self.ecx = (self.ecx & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::ECX_MASK;
+        self.ecx = (self.ecx & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_edx(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EDX_MASK;
+        self.reg_mask |= Self::EDX_MASK;
         self.edx = value;
     }
     pub fn set_dx(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::EDX_MASK;
-        self.edx = (self.edx & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::EDX_MASK;
+        self.edx = (self.edx & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_cs(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::CS_MASK;
+        self.reg_mask |= Self::CS_MASK;
         self.cs = value as u32;
     }
     pub fn set_ss(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::SS_MASK;
+        self.reg_mask |= Self::SS_MASK;
         self.ss = value as u32;
     }
     pub fn set_ds(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::DS_MASK;
+        self.reg_mask |= Self::DS_MASK;
         self.ds = value as u32;
     }
     pub fn set_es(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::ES_MASK;
+        self.reg_mask |= Self::ES_MASK;
         self.es = value as u32;
     }
     pub fn set_fs(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::FS_MASK;
+        self.reg_mask |= Self::FS_MASK;
         self.fs = value as u32;
     }
     pub fn set_gs(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::GS_MASK;
+        self.reg_mask |= Self::GS_MASK;
         self.gs = value as u32;
     }
     pub fn set_esp(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::ESP_MASK;
+        self.reg_mask |= Self::ESP_MASK;
         self.esp = value;
     }
     pub fn set_ebp(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EBP_MASK;
+        self.reg_mask |= Self::EBP_MASK;
         self.ebp = value;
     }
     pub fn set_esi(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::ESI_MASK;
+        self.reg_mask |= Self::ESI_MASK;
         self.esi = value;
     }
     pub fn set_edi(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EDI_MASK;
+        self.reg_mask |= Self::EDI_MASK;
         self.edi = value;
     }
     pub fn set_ip(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::EIP_MASK;
-        self.eip = (self.eip & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::EIP_MASK;
+        self.eip = (self.eip & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_eip(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EIP_MASK;
+        self.reg_mask |= Self::EIP_MASK;
         self.eip = value;
     }
     pub fn set_flags(&mut self, value: u16) {
-        self.reg_mask |= MooRegisters32::EFLAGS_MASK;
-        self.eflags = (self.eflags & MooRegisters32::TOP_16_MASK) | value as u32;
+        self.reg_mask |= Self::EFLAGS_MASK;
+        self.eflags = (self.eflags & Self::TOP_16_MASK) | value as u32;
     }
     pub fn set_eflags(&mut self, value: u32) {
-        self.reg_mask |= MooRegisters32::EFLAGS_MASK;
+        self.reg_mask |= Self::EFLAGS_MASK;
         self.eflags = value;
     }
 
     pub fn ax(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
+        if self.reg_mask & Self::EAX_MASK != 0 {
             Some(self.eax as u16)
         } else {
             None
         }
     }
     pub fn bx(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
+        if self.reg_mask & Self::EBX_MASK != 0 {
             Some(self.ebx as u16)
         } else {
             None
         }
     }
     pub fn cx(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
+        if self.reg_mask & Self::ECX_MASK != 0 {
             Some(self.ecx as u16)
         } else {
             None
         }
     }
     pub fn dx(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
+        if self.reg_mask & Self::EDX_MASK != 0 {
             Some(self.edx as u16)
         } else {
             None
         }
     }
     pub fn eax(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EAX_MASK != 0 {
+        if self.reg_mask & Self::EAX_MASK != 0 {
             Some(self.eax)
         } else {
             None
         }
     }
     pub fn ebx(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EBX_MASK != 0 {
+        if self.reg_mask & Self::EBX_MASK != 0 {
             Some(self.ebx)
         } else {
             None
         }
     }
     pub fn ecx(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::ECX_MASK != 0 {
+        if self.reg_mask & Self::ECX_MASK != 0 {
             Some(self.ecx)
         } else {
             None
         }
     }
     pub fn edx(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EDX_MASK != 0 {
+        if self.reg_mask & Self::EDX_MASK != 0 {
             Some(self.edx)
         } else {
             None
         }
     }
     pub fn cs(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::CS_MASK != 0 {
+        if self.reg_mask & Self::CS_MASK != 0 {
             Some(self.cs as u16)
         } else {
             None
         }
     }
     pub fn ss(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::SS_MASK != 0 {
+        if self.reg_mask & Self::SS_MASK != 0 {
             Some(self.ss as u16)
         } else {
             None
         }
     }
     pub fn ds(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::DS_MASK != 0 {
+        if self.reg_mask & Self::DS_MASK != 0 {
             Some(self.ds as u16)
         } else {
             None
         }
     }
     pub fn es(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::ES_MASK != 0 {
+        if self.reg_mask & Self::ES_MASK != 0 {
             Some(self.es as u16)
         } else {
             None
         }
     }
     pub fn fs(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::FS_MASK != 0 {
+        if self.reg_mask & Self::FS_MASK != 0 {
             Some(self.fs as u16)
         } else {
             None
         }
     }
     pub fn gs(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::GS_MASK != 0 {
+        if self.reg_mask & Self::GS_MASK != 0 {
             Some(self.gs as u16)
         } else {
             None
         }
     }
     pub fn esp(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::ESP_MASK != 0 {
+        if self.reg_mask & Self::ESP_MASK != 0 {
             Some(self.esp)
         } else {
             None
         }
     }
     pub fn ebp(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EBP_MASK != 0 {
+        if self.reg_mask & Self::EBP_MASK != 0 {
             Some(self.ebp)
         } else {
             None
         }
     }
     pub fn cr0(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::CR0_MASK != 0 {
+        if self.reg_mask & Self::CR0_MASK != 0 {
             Some(self.cr0)
         } else {
             None
         }
     }
     pub fn cr3(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::CR3_MASK != 0 {
+        if self.reg_mask & Self::CR3_MASK != 0 {
             Some(self.cr3)
         } else {
             None
         }
     }
     pub fn esi(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::ESI_MASK != 0 {
+        if self.reg_mask & Self::ESI_MASK != 0 {
             Some(self.esi)
         } else {
             None
         }
     }
     pub fn edi(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EDI_MASK != 0 {
+        if self.reg_mask & Self::EDI_MASK != 0 {
             Some(self.edi)
         } else {
             None
         }
     }
     pub fn ip(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::EIP_MASK != 0 {
+        if self.reg_mask & Self::EIP_MASK != 0 {
             Some(self.eip as u16)
         } else {
             None
         }
     }
     pub fn eip(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EIP_MASK != 0 {
+        if self.reg_mask & Self::EIP_MASK != 0 {
             Some(self.eip)
         } else {
             None
         }
     }
     pub fn flags(&self) -> Option<u16> {
-        if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+        if self.reg_mask & Self::EFLAGS_MASK != 0 {
             Some(self.eflags as u16)
         } else {
             None
         }
     }
     pub fn eflags(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+        if self.reg_mask & Self::EFLAGS_MASK != 0 {
             Some(self.eflags)
         } else {
             None
         }
     }
     pub fn dr6(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::DR6_MASK != 0 {
+        if self.reg_mask & Self::DR6_MASK != 0 {
             Some(self.dr6)
         } else {
             None
         }
     }
     pub fn dr7(&self) -> Option<u32> {
-        if self.reg_mask & MooRegisters32::DR7_MASK != 0 {
+        if self.reg_mask & Self::DR7_MASK != 0 {
             Some(self.dr7)
         } else {
             None
@@ -689,7 +668,7 @@ impl MooRegisters32 {
     }
 
     pub fn is_valid(&self) -> bool {
-        if self.reg_mask & MooRegisters32::EFLAGS_MASK != 0 {
+        if self.reg_mask & Self::EFLAGS_MASK != 0 {
             // We have flags
             if self.eflags & 0x0000_0002 == 0 {
                 // Reserved flag bit 1 cannot be clear
@@ -700,86 +679,86 @@ impl MooRegisters32 {
     }
 
     pub fn delta(&self, other: &MooRegisters32) -> MooRegisters32 {
-        let mut delta_regs = MooRegisters32::default();
+        let mut delta_regs = Self::default();
 
         if self.cr0 != other.cr0 {
-            delta_regs.reg_mask |= MooRegisters32::CR0_MASK;
+            delta_regs.reg_mask |= Self::CR0_MASK;
             delta_regs.cr0 = other.cr0;
         }
         if self.cr3 != other.cr3 {
-            delta_regs.reg_mask |= MooRegisters32::CR3_MASK;
+            delta_regs.reg_mask |= Self::CR3_MASK;
             delta_regs.cr3 = other.cr3;
         }
         if self.eax != other.eax {
-            delta_regs.reg_mask |= MooRegisters32::EAX_MASK;
+            delta_regs.reg_mask |= Self::EAX_MASK;
             delta_regs.eax = other.eax;
         }
         if self.ebx != other.ebx {
-            delta_regs.reg_mask |= MooRegisters32::EBX_MASK;
+            delta_regs.reg_mask |= Self::EBX_MASK;
             delta_regs.ebx = other.ebx;
         }
         if self.ecx != other.ecx {
-            delta_regs.reg_mask |= MooRegisters32::ECX_MASK;
+            delta_regs.reg_mask |= Self::ECX_MASK;
             delta_regs.ecx = other.ecx;
         }
         if self.edx != other.edx {
-            delta_regs.reg_mask |= MooRegisters32::EDX_MASK;
+            delta_regs.reg_mask |= Self::EDX_MASK;
             delta_regs.edx = other.edx;
         }
         if self.esi != other.esi {
-            delta_regs.reg_mask |= MooRegisters32::ESI_MASK;
+            delta_regs.reg_mask |= Self::ESI_MASK;
             delta_regs.esi = other.esi;
         }
         if self.edi != other.edi {
-            delta_regs.reg_mask |= MooRegisters32::EDI_MASK;
+            delta_regs.reg_mask |= Self::EDI_MASK;
             delta_regs.edi = other.edi;
         }
         if self.ebp != other.ebp {
-            delta_regs.reg_mask |= MooRegisters32::EBP_MASK;
+            delta_regs.reg_mask |= Self::EBP_MASK;
             delta_regs.ebp = other.ebp;
         }
         if self.esp != other.esp {
-            delta_regs.reg_mask |= MooRegisters32::ESP_MASK;
+            delta_regs.reg_mask |= Self::ESP_MASK;
             delta_regs.esp = other.esp;
         }
         if self.cs != other.cs {
-            delta_regs.reg_mask |= MooRegisters32::CS_MASK;
+            delta_regs.reg_mask |= Self::CS_MASK;
             delta_regs.cs = other.cs;
         }
         if self.ds != other.ds {
-            delta_regs.reg_mask |= MooRegisters32::DS_MASK;
+            delta_regs.reg_mask |= Self::DS_MASK;
             delta_regs.ds = other.ds;
         }
         if self.es != other.es {
-            delta_regs.reg_mask |= MooRegisters32::ES_MASK;
+            delta_regs.reg_mask |= Self::ES_MASK;
             delta_regs.es = other.es;
         }
         if self.fs != other.fs {
-            delta_regs.reg_mask |= MooRegisters32::FS_MASK;
+            delta_regs.reg_mask |= Self::FS_MASK;
             delta_regs.fs = other.fs;
         }
         if self.gs != other.gs {
-            delta_regs.reg_mask |= MooRegisters32::GS_MASK;
+            delta_regs.reg_mask |= Self::GS_MASK;
             delta_regs.gs = other.gs;
         }
         if self.ss != other.ss {
-            delta_regs.reg_mask |= MooRegisters32::SS_MASK;
+            delta_regs.reg_mask |= Self::SS_MASK;
             delta_regs.ss = other.ss;
         }
         if self.eip != other.eip {
-            delta_regs.reg_mask |= MooRegisters32::EIP_MASK;
+            delta_regs.reg_mask |= Self::EIP_MASK;
             delta_regs.eip = other.eip;
         }
         if self.eflags != other.eflags {
-            delta_regs.reg_mask |= MooRegisters32::EFLAGS_MASK;
+            delta_regs.reg_mask |= Self::EFLAGS_MASK;
             delta_regs.eflags = other.eflags;
         }
         if self.dr6 != other.dr6 {
-            delta_regs.reg_mask |= MooRegisters32::DR6_MASK;
+            delta_regs.reg_mask |= Self::DR6_MASK;
             delta_regs.dr6 = other.dr6;
         }
         if self.dr7 != other.dr7 {
-            delta_regs.reg_mask |= MooRegisters32::DR7_MASK;
+            delta_regs.reg_mask |= Self::DR7_MASK;
             delta_regs.dr7 = other.dr7;
         }
 
@@ -844,7 +823,7 @@ macro_rules! diff_chr {
     };
 }
 
-impl Display for crate::types::MooRegisters32Printer<'_> {
+impl Display for MooRegisters32Printer<'_> {
     #[rustfmt::skip]
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let reg_str = format!(

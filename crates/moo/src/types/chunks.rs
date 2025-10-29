@@ -103,10 +103,11 @@ pub struct MooChunkHeader {
 #[binrw]
 #[brw(little)]
 pub struct MooFileHeader {
-    pub version:    u8,
-    pub reserved:   [u8; 3],
+    pub major_version: u8,
+    pub minor_version: u8,
+    pub reserved: [u8; 2],
     pub test_count: u32,
-    pub cpu_name:   [u8; 4],
+    pub cpu_id: [u8; 4],
 }
 
 #[derive(Debug)]

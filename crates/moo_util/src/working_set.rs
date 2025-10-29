@@ -21,14 +21,10 @@
     DEALINGS IN THE SOFTWARE.
 */
 use std::{
-    fs,
     io,
-    io::Read,
     path::{Path, PathBuf},
 };
 
-#[cfg(feature = "gzip")]
-use flate2::read::GzDecoder;
 use once_cell::sync::Lazy;
 use rayon::prelude::{IntoParallelIterator, IntoParallelRefIterator};
 use regex::Regex;
@@ -44,14 +40,14 @@ pub static MOO_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)\.moo(\.gz)?$"
 /// - Files are sorted by file name (UTF-8) for deterministic iteration.
 #[derive(Debug)]
 pub struct WorkingSet {
-    files:    Vec<PathBuf>,
-    /// Index of the next file to read.
-    next_idx: usize,
-    /// Internal read buffer reused on each `read_next()`.
-    buffer:   Vec<u8>,
+    files: Vec<PathBuf>,
 }
 
 impl WorkingSet {
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
+
     pub fn from_path<P: AsRef<Path>>(path: P, limit: Option<usize>) -> io::Result<Self> {
         WorkingSet::from_path_regex(path, None, limit)
     }
@@ -97,11 +93,7 @@ impl WorkingSet {
             });
         }
 
-        Ok(Self {
-            files,
-            next_idx: 0,
-            buffer: Vec::new(),
-        })
+        Ok(Self { files })
     }
 
     /// Total number of files.

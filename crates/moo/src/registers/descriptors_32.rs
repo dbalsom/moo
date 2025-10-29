@@ -20,10 +20,30 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+use std::fmt::Display;
 
-pub use crate::{
-    registers::{MooRegister, MooRegisters},
-    test::moo_test::MooTest,
-    test_file::{stats::MooTestFileStats, MooTestFile},
-    types::{MooCycleState, MooFileMetadata, MooIvtOrder, MooTestGenMetadata},
-};
+use binrw::binrw;
+
+#[derive(Clone, Debug, PartialEq)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptor32 {
+    pub access: u32,
+    pub base:   u32,
+    pub limit:  u32,
+}
+
+impl Display for MooDescriptor32 {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            fmt,
+            "Access:{:08X} Base:{:08X} Limit:{:08X}",
+            self.access, self.base, self.limit,
+        )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[binrw]
+#[brw(little)]
+pub struct MooDescriptors32 {}

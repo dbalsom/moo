@@ -22,8 +22,8 @@
 */
 use super::MooTestFile;
 use crate::{
-    prelude::{MooCycleState, MooTest},
-    types::{flags::MooCpuFlag, MooBusState, MooRegister},
+    prelude::*,
+    types::{flags::MooCpuFlag, MooBusState},
 };
 use std::collections::HashSet;
 
@@ -83,6 +83,7 @@ macro_rules! collect_bus_stats {
     }};
 }
 
+/// Implementation block for statistics generation
 impl MooTestFile {
     pub fn calc_stats(&mut self, cycle_subtract: usize) -> MooTestFileStats {
         let test_ct = self.tests.len();

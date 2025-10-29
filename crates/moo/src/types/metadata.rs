@@ -24,7 +24,7 @@
 use crate::types::MooCpuType;
 use binrw::binrw;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 #[binrw]
 #[brw(little)]
 pub struct MooFileMetadata {

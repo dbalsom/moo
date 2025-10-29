@@ -21,13 +21,9 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use std::{
-    fs,
-    io::{BufReader, Cursor},
-    path::PathBuf,
-};
+use std::{fs, io::Cursor, path::PathBuf};
 
-use crate::{args::GlobalOptions, find::args::FindParams, working_set::WorkingSet};
+use crate::{args::GlobalOptions, commands::find::args::FindParams, working_set::WorkingSet};
 use anyhow::Error;
 use moo::prelude::*;
 use rayon::prelude::*;
@@ -57,7 +53,7 @@ impl SearchStats {
     }
 }
 
-pub fn run(global: &GlobalOptions, params: &FindParams) -> Result<(), Error> {
+pub fn run(_global: &GlobalOptions, params: &FindParams) -> Result<(), Error> {
     let working_set = WorkingSet::from_path(&params.in_path, None)?;
 
     if working_set.is_empty() {

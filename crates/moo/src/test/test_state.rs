@@ -23,25 +23,30 @@
 
 use std::io::{Cursor, Write};
 
-use crate::types::{
-    chunks::MooChunkType,
-    effective_address::MooEffectiveAddress,
-    MooRamEntries,
-    MooRamEntry,
-    MooRegisters,
-    MooRegistersInit,
-    MooStateType,
+use crate::{
+    registers::*,
+    types::{chunks::MooChunkType, effective_address::MooEffectiveAddress, MooRamEntries, MooRamEntry, MooStateType},
 };
 
 use binrw::BinResult;
 
+/// A [MooTestState] represents a CPU state snapshot, either the initial state of the CPU before
+/// test execution, or the final state of the CPU after test execution. The `s_type` field indicates
+/// whether the state is initial or final, via the [MooStateType] enum.
 #[derive(Clone, Default)]
 pub struct MooTestState {
+    /// The type of state (initial or final).
     pub s_type: MooStateType,
+    /// The CPU registers for this state.
     pub regs: MooRegisters,
+    /// The segment descriptors for this state, if applicable.
+    pub descriptors: Option<MooDescriptors>,
+    /// The effective address information for this state, if applicable.
     pub ea: Option<MooEffectiveAddress>,
+    /// The instruction queue contents for this state.
     pub queue: Vec<u8>,
-    pub ram: MooRamEntries,
+    /// The RAM contents for this state.
+    pub ram: Vec<MooRamEntry>,
 }
 
 impl MooTestState {
@@ -60,16 +65,13 @@ impl MooTestState {
             MooRegisters::from(regs_start)
         };
 
-        let ram_entries = MooRamEntries {
-            entry_count: ram.len() as u32,
-            entries: ram,
-        };
         Self {
             s_type,
             regs,
+            descriptors: None,
             ea,
             queue,
-            ram: ram_entries,
+            ram,
         }
     }
 
@@ -77,12 +79,16 @@ impl MooTestState {
         &self.regs
     }
 
+    pub fn regs_mut(&mut self) -> &mut MooRegisters {
+        &mut self.regs
+    }
+
     pub fn queue(&self) -> &[u8] {
         &self.queue
     }
 
     pub fn ram(&self) -> &[MooRamEntry] {
-        &self.ram.entries
+        &self.ram
     }
 
     pub fn ea(&self) -> Option<&MooEffectiveAddress> {
@@ -109,7 +115,13 @@ impl MooTestState {
         }
 
         // Write the RAM chunk.
-        MooChunkType::Ram.write(&mut state_buffer, &self.ram)?;
+        MooChunkType::Ram.write(
+            &mut state_buffer,
+            &MooRamEntries {
+                entry_count: self.ram.len() as u32,
+                entries: self.ram.clone(),
+            },
+        )?;
 
         match self.s_type {
             MooStateType::Initial => {

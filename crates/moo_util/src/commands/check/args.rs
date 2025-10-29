@@ -20,41 +20,51 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+use std::path::PathBuf;
 
-use crate::registers::MooSegmentRegister;
+use crate::args::{hash_parser, in_path_parser, index_parser, out_path_parser};
 
-use binrw::binrw;
+use bpaf::{construct, Parser};
 
 #[derive(Clone, Debug)]
-#[binrw]
-#[brw(little)]
-pub struct MooEffectiveAddress {
-    pub base_segment: MooSegmentRegister,
-    pub base_selector: u16,
-    pub base_address: u32,
-    pub base_limit: u32,
-    pub offset: u32,
-    pub linear_address: u32,
-    pub physical_address: u32,
+pub(crate) struct CheckParams {
+    pub(crate) in_path: PathBuf,
+    pub(crate) out_path: Option<PathBuf>,
+    pub(crate) hash: Option<String>,
+    pub(crate) index: Option<usize>,
+    pub(crate) fix: bool,
+    pub(crate) compress: bool,
 }
 
-impl MooEffectiveAddress {
-    pub fn new_real(
-        base_segment: MooSegmentRegister,
-        base_selector: u16,
-        base_address: u32,
-        base_limit: u32,
-        offset: u32,
-    ) -> Self {
-        let linear_address = base_address.wrapping_add(offset);
-        Self {
-            base_segment,
-            base_selector,
-            base_address,
-            base_limit,
-            offset,
-            linear_address,
-            physical_address: linear_address,
-        }
-    }
+pub(crate) fn check_parser() -> impl Parser<CheckParams> {
+    let in_path = in_path_parser();
+    let out_path = out_path_parser().optional();
+    let hash = hash_parser().optional();
+    let index = index_parser().optional();
+    let fix = bpaf::long("fix")
+        .help("Automatically fix any detected issues where possible")
+        .switch();
+    let compress = bpaf::long("compress")
+        .help("Compress the output file if --fix is specified")
+        .switch();
+
+    construct!(CheckParams {
+        in_path,
+        out_path,
+        hash,
+        index,
+        fix,
+        compress,
+    })
+    .guard(
+        |p| {
+            if p.fix {
+                p.out_path.is_some()
+            }
+            else {
+                true
+            }
+        },
+        "--output is required if --fix is specified",
+    )
 }

@@ -20,6 +20,7 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+
 pub mod stats;
 
 use std::{
@@ -46,43 +47,113 @@ use crate::{
         MooException,
         MooFileMetadata,
         MooRamEntries,
-        MooRegisters,
-        MooRegisters16,
         MooStateType,
         MooTestGenMetadata,
     },
+    MOO_MAJOR_VERSION,
+    MOO_MINOR_VERSION,
 };
 
-use binrw::{BinRead, BinResult, BinWrite};
-use sha1::Digest;
+use binrw::{BinRead, BinResult};
 
-use crate::test::test_state::MooTestState;
+use crate::{
+    registers::{MooRegisters, MooRegisters16, MooRegisters32},
+    test::test_state::MooTestState,
+};
 #[cfg(feature = "gzip")]
 use flate2::read::GzDecoder;
 
+/// A representation of a **MOO** test file.
+///
+/// A **MOO** test file is a binary file format used to store CPU tests for emulator validation
+/// or research. It contains a series of tests, each with its own initial and final CPU states,
+/// memory contents, and execution cycles. The file format is designed to be extensible, based on
+/// sized chunks, similar to **RIFF**.
+///
+/// The [MooTestFile] struct abstracts the file format and provides methods to read from and write
+/// to **MOO** test files. It supports optional gzip compression for storage efficiency, if the
+/// `gzip` feature is enabled.
+///
+///
+/// # Example
+///
+/// ```rust
+///    use moo::prelude::*;
+///    use std::io::Cursor;
+///    // Read an entire MOO test file into memory
+///    let bytes = std::fs::read("tests/test_data/00.MOO").expect("Failed to read MOO file");
+///    // Wrap the slice in a Cursor to provide Seek
+///    let mut cursor = Cursor::new(&bytes[..]);
+///    // Read the MOO test file
+///    let moo_file = MooTestFile::read(&mut cursor).expect("Failed to parse MOO file");
+///    // Access test cases
+///    for test in moo_file.tests() {
+///        println!("Test Name: {}", test.name());
+///    }
+/// ```
 pub struct MooTestFile {
-    version: u8,
+    /// The major version of the **MOO** file format.
+    major_version: u8,
+    /// The minor version of the **MOO** file format.
+    minor_version: u8,
+    /// The encoded architecture tag as a String.
     arch: String,
+    /// The decoded architecture tag as a [MooCpuType] enum.
     cpu_type: MooCpuType,
+    /// A vector of all tests contained in the file as [MooTest] structs.
     tests: Vec<MooTest>,
+    /// A map of test SHA1 hashes to their index in the tests vector, for quick lookup.
     hashes: HashMap<String, usize>,
+    /// Optional metadata about the file, such as generator info.
     metadata: Option<MooFileMetadata>,
+    /// Whether the file was read as gzip-compressed.
+    compressed: bool,
 }
 
+/// Main implementation block
 impl MooTestFile {
-    pub fn new(version: u8, cpu_type: MooCpuType, capacity: usize) -> Self {
+    /// Create a new empty `MooTestFile`.
+    ///
+    /// It is unlikely any users of this crate will need to call this directly. It is normally
+    /// utilized by an external test generator to produce a set of tests from hardware.
+    ///
+    /// Arguments:
+    /// * `major_version` - The major version of the MOO file format. Should not exceed [MOO_MAJOR_VERSION].
+    /// * `minor_version` - The minor version of the MOO file format. Should not exceed [MOO_MINOR_VERSION].
+    /// * `cpu_type` - The CPU architecture type as a [MooCpuType].
+    /// * `capacity` - The initial capacity for the tests vector.
+    pub fn new(major_version: u8, minor_version: u8, cpu_type: MooCpuType, capacity: usize) -> Self {
+        if major_version > MOO_MAJOR_VERSION {
+            panic!("major version should be <= {}", MOO_MAJOR_VERSION);
+        }
+        if minor_version > MOO_MINOR_VERSION {
+            panic!("minor version should be <= {}", MOO_MINOR_VERSION);
+        }
+
         Self {
-            version,
+            major_version,
+            minor_version,
             arch: cpu_type.to_str().to_string(),
             cpu_type,
             tests: Vec::with_capacity(capacity),
             hashes: HashMap::with_capacity(capacity),
             metadata: None,
+            compressed: false,
         }
     }
 
+    /// Set the optional file Metadata struct
     pub fn set_metadata(&mut self, metadata: MooFileMetadata) {
+        self.cpu_type = metadata.cpu_type;
         self.metadata = Some(metadata);
+    }
+
+    pub fn compressed(&self) -> bool {
+        self.compressed
+    }
+
+    pub fn set_compressed(&mut self, compressed: bool) {
+        self.compressed = compressed;
     }
 
     pub fn metadata(&self) -> Option<&MooFileMetadata> {
@@ -94,7 +165,11 @@ impl MooTestFile {
     }
 
     pub fn version(&self) -> u8 {
-        self.version
+        self.major_version
+    }
+
+    pub fn cpu_type(&self) -> &MooCpuType {
+        &self.cpu_type
     }
 
     pub fn arch(&self) -> &str {
@@ -103,6 +178,10 @@ impl MooTestFile {
 
     pub fn tests(&self) -> &[MooTest] {
         &self.tests
+    }
+
+    pub fn tests_mut(&mut self) -> &mut [MooTest] {
+        &mut self.tests
     }
 
     pub fn test_ct(&self) -> usize {
@@ -126,7 +205,10 @@ impl MooTestFile {
             gz.read_to_end(&mut decompressed)?;
 
             let mut cursor = Cursor::new(decompressed);
-            return MooTestFile::read_impl(&mut cursor);
+            let mut test_file = MooTestFile::read_impl(&mut cursor)?;
+
+            test_file.compressed = true;
+            return Ok(test_file);
         }
 
         // If gzip is disabled but stream looks like gzip, return a helpful error.
@@ -181,7 +263,7 @@ impl MooTestFile {
         // Read the file header.
         let header: MooFileHeader = MooFileHeader::read(reader)?;
 
-        let cpu_string = String::from_utf8_lossy(&header.cpu_name).to_string();
+        let cpu_string = String::from_utf8_lossy(&header.cpu_id).to_string();
         let cpu_type = MooCpuType::from_str(&cpu_string).map_err(|e| binrw::Error::Custom {
             pos: reader.stream_position().unwrap_or(0),
             err: Box::new(MooError::ParseError(format!(
@@ -190,11 +272,17 @@ impl MooTestFile {
             ))),
         })?;
 
-        let mut new_file = MooTestFile::new(header.version, cpu_type, header.test_count as usize);
+        let mut new_file = MooTestFile::new(
+            header.major_version,
+            header.minor_version,
+            cpu_type,
+            header.test_count as usize,
+        );
 
         log::debug!(
-            "Reading MooTestFile: version {}, arch: {} test_ct: {}",
-            new_file.version,
+            "Reading MooTestFile: version {}.{}, arch: {} test_ct: {}",
+            header.major_version,
+            header.minor_version,
             new_file.arch,
             header.test_count
         );
@@ -437,12 +525,10 @@ impl MooTestFile {
         let mut new_state = MooTestState {
             s_type,
             regs: MooRegisters::default_opt(cpu_type),
+            descriptors: None,
             queue: Vec::new(),
             ea: None,
-            ram: MooRamEntries {
-                entry_count: 0,
-                entries: Vec::new(),
-            },
+            ram: Vec::new(),
         };
 
         // Get stream length.
@@ -490,14 +576,14 @@ impl MooTestFile {
                     have_regs = true;
                 }
                 MooChunkType::Registers32 => {
-                    let regs = crate::types::MooRegisters32::read(reader)?;
+                    let regs = MooRegisters32::read(reader)?;
                     new_state.regs = MooRegisters::ThirtyTwo(regs);
                     have_regs = true;
                 }
                 MooChunkType::Ram => {
                     // Read the RAM chunk.
                     let ram_entries = MooRamEntries::read(reader)?;
-                    new_state.ram = ram_entries;
+                    new_state.ram = ram_entries.entries;
                     have_ram = true;
                 }
                 MooChunkType::QueueState => {
@@ -519,81 +605,56 @@ impl MooTestFile {
         }
     }
 
-    pub fn write<WS: Write + Seek>(&self, writer: &mut WS) -> BinResult<()> {
+    /// Write a [MooTestFile] to an implementor of [Write](std::io::Write) + [Seek](std::io::Seek).
+    /// Arguments:
+    /// * `writer` - The writer to write the MOO file to.
+    /// * `preserve_hash` - If true, preserves the existing test hashes, if present. If false, test
+    ///      hashes will be recalculated from the test data. Test hashes will be recalculated if
+    ///      missing, regardless of this flag.
+    pub fn write<WS: Write + Seek>(&self, writer: &mut WS, preserve_hash: bool) -> BinResult<()> {
+        #[cfg(feature = "gzip")]
+        let mut file_writer = if self.compressed {
+            // Wrap the writer in a GzEncoder
+            use flate2::{write::GzEncoder, Compression};
+            let encoder = GzEncoder::new(writer, Compression::new(9));
+            Box::new(encoder) as Box<dyn Write>
+        }
+        else {
+            Box::new(writer) as Box<dyn Write>
+        };
+
+        #[cfg(not(feature = "gzip"))]
+        let mut file_writer = writer;
+
+        let mut cursor = Cursor::new(Vec::<u8>::new());
+
         // Write the file header chunk.
         MooChunkType::FileHeader.write(
-            writer,
+            &mut cursor,
             &MooFileHeader {
-                version:    self.version,
-                reserved:   [0; 3],
+                major_version: self.major_version,
+                minor_version: self.minor_version,
+                reserved: [0; 2],
                 test_count: self.tests.len() as u32,
-                cpu_name:   self.arch.clone().into_bytes()[0..4]
+                cpu_id: self.arch.clone().into_bytes()[0..4]
                     .try_into()
-                    .expect("CPU Name must be 4 chars long"),
+                    .expect("CPU Name must be <=4 chars"),
             },
         )?;
 
         // Write the file metadata chunk, if present
         if let Some(metadata) = &self.metadata {
-            MooChunkType::FileMetadata.write(writer, metadata)?;
+            MooChunkType::FileMetadata.write(&mut cursor, metadata)?;
         }
+
+        // Write the file header + metadata to the file writer.
+        file_writer.write_all(&cursor.into_inner())?;
 
         // Write all the tests.
         for (ti, test) in self.tests.iter().enumerate() {
-            let mut test_buffer = Cursor::new(Vec::new());
-
-            // Write the test chunk body.
-            MooTestChunk { index: ti as u32 }.write(&mut test_buffer)?;
-
-            // Write the generator metadata chunk if present.
-            if let Some(gen_metadata) = &test.gen_metadata {
-                MooChunkType::GeneratorMetadata.write(&mut test_buffer, gen_metadata)?;
-            }
-
-            // Write the name chunk.
-            let name_chunk = MooNameChunk {
-                len:  test.name.len() as u32,
-                name: test.name.clone(),
-            };
-            MooChunkType::Name.write(&mut test_buffer, &name_chunk)?;
-
-            // Write the bytes chunk.
-            let bytes_chunk = MooBytesChunk {
-                len:   test.bytes.len() as u32,
-                bytes: test.bytes.clone(),
-            };
-            MooChunkType::Bytes.write(&mut test_buffer, &bytes_chunk)?;
-
-            // Write the initial state chunk.
-            test.initial_state.write(&mut test_buffer)?;
-
-            // Write the final state chunk.
-            test.final_state.write(&mut test_buffer)?;
-
-            let mut cycle_buffer = Cursor::new(Vec::new());
-            // Write the count of cycles to the cycle buffer.
-            (test.cycles.len() as u32).write_le(&mut cycle_buffer)?;
-            // Write all the cycles to the cycle buffer.
-            for cycle in &test.cycles {
-                cycle.write(&mut cycle_buffer)?;
-            }
-
-            // Write the cycles chunk.
-            MooChunkType::CycleStates.write(&mut test_buffer, &cycle_buffer.into_inner())?;
-
-            // If an exception is present, write the exception chunk.
-            if let Some(exception) = &test.exception {
-                MooChunkType::Exception.write(&mut test_buffer, exception)?;
-            }
-
-            // Create the SHA1 hash from the current state of the test buffer.
-            let hash = sha1::Sha1::digest(&test_buffer.get_ref()).to_vec();
-
-            // Write the hash chunk.
-            MooChunkType::Hash.write(&mut test_buffer, &hash)?;
-
-            // Write the test chunk.
-            MooChunkType::TestHeader.write(writer, &test_buffer.into_inner())?;
+            let mut cursor = Cursor::new(Vec::<u8>::new());
+            test.write(ti, &mut cursor, preserve_hash)?;
+            file_writer.write_all(&cursor.into_inner())?;
         }
 
         Ok(())

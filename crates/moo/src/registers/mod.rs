@@ -20,19 +20,26 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-use crate::types::{
-    chunks::MooChunkType,
-    MooCpuType,
-    MooRegisters16,
-    MooRegisters16Init,
-    MooRegisters16Printer,
-    MooRegisters32,
-    MooRegisters32Init,
-    MooRegisters32Printer,
-};
-use binrw::binrw;
+
+//! # Registers
+//! This module provides types that represent CPU registers and segment descriptors.
+
+pub mod descriptors_16;
+pub mod descriptors_32;
+pub mod registers_16;
+pub mod registers_32;
+
 use std::fmt::Display;
 
+use crate::types::{chunks::MooChunkType, MooCpuType};
+
+use binrw::binrw;
+
+use crate::registers::{descriptors_16::MooDescriptors16, descriptors_32::MooDescriptors32};
+pub use registers_16::{MooRegisters16, MooRegisters16Init, MooRegisters16Printer};
+pub use registers_32::{MooRegisters32, MooRegisters32Init, MooRegisters32Printer};
+
+/// An enumeration of all possible CPU registers understood by MOO.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[binrw]
 #[brw(little)]
@@ -71,17 +78,24 @@ pub enum MooRegister {
     EFLAGS,
 }
 
+/// An enumeration of all possible segment registers understood by MOO.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Ord, PartialOrd, Hash)]
 #[binrw]
 #[brw(little)]
 #[br(repr = u8)]
 #[bw(repr = u8)]
 pub enum MooSegmentRegister {
+    /// The code segment register.
     CS,
+    /// The stack segment register.
     SS,
+    /// The data segment register.
     DS,
+    /// The extra segment register.
     ES,
+    /// The FS segment register is only available on 32-bit and later x86 CPUs.
     FS,
+    /// The GS segment register is only available on 32-bit and later x86 CPUs.
     GS,
 }
 
@@ -118,6 +132,14 @@ impl MooRegisterDiff {
     pub fn register(&self) -> MooRegister {
         self.register
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+#[binrw]
+#[brw(little)]
+pub enum MooDescriptors {
+    Sixteen(MooDescriptors16),
+    ThirtyTwo(MooDescriptors32),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -207,6 +229,20 @@ impl MooRegisters {
                 MooRegisters::ThirtyTwo(regs1.delta(regs2))
             }
             _ => panic!("Cannot compare different register types"),
+        }
+    }
+
+    pub fn sp_linear_real(&self) -> Option<u32> {
+        match self {
+            MooRegisters::Sixteen(regs) => regs.sp_linear_real(),
+            MooRegisters::ThirtyTwo(regs) => regs.sp_linear_real(),
+        }
+    }
+
+    pub fn csip_linear_real(&self) -> Option<u32> {
+        match self {
+            MooRegisters::Sixteen(regs) => regs.csip_linear_real(),
+            MooRegisters::ThirtyTwo(regs) => regs.csip_linear_real(),
         }
     }
 }

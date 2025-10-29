@@ -25,14 +25,11 @@ use crate::args::GlobalOptions;
 use anyhow::Error;
 
 use crate::util::print_banner;
-use moo::{
-    prelude::*,
-    types::{MooCycleStatePrinter, MooRegistersPrinter},
-};
+use moo::{prelude::*, registers::MooRegistersPrinter, types::MooCycleStatePrinter};
 
 pub const DISPLAY_INDENT: usize = 2;
 
-pub fn run(global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> {
+pub fn run(_global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> {
     // Load the specified MOO file
 
     let moo_in = match std::fs::File::open(&params.in_path) {
@@ -77,15 +74,15 @@ pub fn run(global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> 
 
         let initial_regs_printer = MooRegistersPrinter {
             cpu_type: metadata.cpu_type,
-            regs: &test.initial_regs(),
+            regs: &test.initial_state().regs(),
             diff: None,
             indent: (indent as u32) * 2,
         };
 
         let final_regs_printer = MooRegistersPrinter {
             cpu_type: metadata.cpu_type,
-            regs: &test.final_regs(),
-            diff: Some(&test.initial_regs()),
+            regs: &test.final_state().regs(),
+            diff: Some(&test.initial_state().regs()),
             indent: (indent as u32) * 2,
         };
 
@@ -98,6 +95,14 @@ pub fn run(global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> 
 
         print_banner(banner_msg.as_str());
 
+        if let Some(gen_metadata) = test.gen_metadata() {
+            println!("Metadata:");
+            indent += DISPLAY_INDENT;
+            println!("{:indent$}Seed: {:?}", "", gen_metadata.seed,);
+            println!("{:indent$}Generation count: {}", "", gen_metadata.gen_ct,);
+            indent -= DISPLAY_INDENT;
+        }
+
         println!("Name: {}", test.name());
         println!("Bytes: {:02X?}", test.bytes());
         println!("Initial state:");
@@ -105,7 +110,7 @@ pub fn run(global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> 
         println!("{}", initial_regs_printer);
         println!("{:indent$}Memory:", "");
         indent += DISPLAY_INDENT;
-        for ram_entry in &test.initial_mem_state().entries {
+        for ram_entry in test.initial_state().ram() {
             println!("{:indent$}{:06X}: {:02X}", "", ram_entry.address, ram_entry.value);
         }
         indent -= DISPLAY_INDENT;
@@ -114,7 +119,7 @@ pub fn run(global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error> 
         println!("{}", final_regs_printer);
         println!("{:indent$}Memory:", "");
         indent += DISPLAY_INDENT;
-        for ram_entry in &test.final_mem_state().entries {
+        for ram_entry in test.final_state().ram() {
             println!("{:indent$}{:06X}: {:02X}", "", ram_entry.address, ram_entry.value);
         }
         indent -= DISPLAY_INDENT;

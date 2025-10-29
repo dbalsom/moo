@@ -21,7 +21,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use crate::types::{MooBusState, MooCpuType, MooCpuWidth, MooDataWidth, MooTState};
+use crate::types::{MooBusState, MooCpuDataBusWidth, MooCpuType, MooDataWidth, MooTState};
 use binrw::binrw;
 use std::fmt::Display;
 
@@ -112,10 +112,10 @@ pub struct MooCycleStatePrinter {
 
 impl MooCycleStatePrinter {
     pub fn data_width(&self) -> MooDataWidth {
-        let cpu_width = MooCpuWidth::from(self.cpu_type);
+        let cpu_width = MooCpuDataBusWidth::from(self.cpu_type);
         match cpu_width {
-            MooCpuWidth::Eight => MooDataWidth::EightLow,
-            MooCpuWidth::Sixteen => {
+            MooCpuDataBusWidth::Eight => MooDataWidth::EightLow,
+            MooCpuDataBusWidth::Sixteen => {
                 if ((self.address_latch & 1) != 0) && (self.state.pins0 & MooCycleState::PIN_BHE == 0) {
                     MooDataWidth::EightHigh
                 }

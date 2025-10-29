@@ -21,11 +21,14 @@ serde = { version = "1.0", features = ["derive"], optional = true }
 log = "0.4.21"
 thiserror = "2.0"
 flate2 = { workspace = true, optional = true }
+document-features.workspace = true
 
 [dev-dependencies]
 tempfile = "3.23.0"
 
 [features]
-default = ["serde", "gzip"]
+default = ["use_serde", "gzip"]
+## Uses [serde](https://docs.rs/serde/latest/serde/) for serialization/deserialization support. This feature provides the `Deserialize` trait for several MOO types.
 use_serde = ["serde"]
+## Support reading and writing gzipped MOO archives.
 gzip = ["flate2"]

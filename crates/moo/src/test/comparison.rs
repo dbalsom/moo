@@ -22,14 +22,23 @@
 */
 use crate::types::MooRamEntry;
 
+/// An enumeration of possible results when comparing two [MooTest]s.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MooComparison {
+    /// The two [MooTest]s are equal.
     Equal,
+    /// The two [MooTest]s differ in register values.
     RegisterMismatch,
+    /// The two [MooTest]s differ in cycle count, with the differing values provided.
     CycleCountMismatch(usize, usize),
+    /// The two [MooTest]s differ in cycle address, with the differing values provided.
     CycleAddressMismatch(u32, u32),
+    /// The two [MooTest]s differ in bus state, with the differing values provided.
     CycleBusMismatch(u8, u8),
+    /// The two [MooTest]s differ in memory address, with the differing entries provided.
     MemoryAddressMismatch(MooRamEntry, MooRamEntry),
+    /// The two [MooTest]s differ in memory values, with the differing entries provided.
     MemoryValueMismatch(MooRamEntry, MooRamEntry),
+    /// The two [MooTest]s differ in ALE signal state, with the cycle number and differing values provided.
     ALEMismatch(usize, bool, bool),
 }

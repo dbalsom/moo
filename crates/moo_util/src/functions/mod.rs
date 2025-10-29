@@ -21,17 +21,4 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use crate::{args::GlobalOptions, check::args::CheckParams};
-
-use crate::working_set::WorkingSet;
-use anyhow::Error;
-
-pub fn run(global: &GlobalOptions, params: &CheckParams) -> Result<(), Error> {
-    let working_set = WorkingSet::from_path(&params.in_path, None)?;
-
-    if working_set.is_empty() {
-        return Err(Error::msg("No files selected"));
-    }
-
-    Ok(())
-}
+pub mod check;

@@ -21,10 +21,11 @@
     DEALINGS IN THE SOFTWARE.
 */
 mod args;
-mod check;
-mod display;
+mod commands;
+mod enums;
 mod file;
-mod find;
+mod functions;
+mod structs;
 mod util;
 mod working_set;
 
@@ -43,9 +44,9 @@ fn main() -> Result<(), Error> {
             println!("mootility v{}", env!("CARGO_PKG_VERSION"));
             Ok(())
         }
-        Command::Display(params) => display::run(&app_params.global, params),
-        Command::Find(params) => find::run(&app_params.global, params),
-        Command::Check(params) => check::run(&app_params.global, params),
+        Command::Display(params) => commands::display::run(&app_params.global, params),
+        Command::Find(params) => commands::find::run(&app_params.global, params),
+        Command::Check(params) => commands::check::run(&app_params.global, params),
     };
 
     match command_result {

@@ -6,9 +6,13 @@ authors.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[[bin]]
+name = "moo_util"
+path = "src/main.rs"
+
 [dependencies]
 moo-rs = { path = "../moo" }
-
+marty_dasm = { git = "https://github.com/dbalsom/marty_dasm.git" }
 log.workspace = true
 env_logger = "0.11"
 bpaf = { version = "0.9", features = ["autocomplete"] }

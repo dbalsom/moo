@@ -26,13 +26,13 @@ use std::{
     path::PathBuf,
 };
 
-use crate::{
+use crate::commands::{
     check::args::CheckParams,
     display::args::{display_parser, DisplayParams},
     find::args::FindParams,
 };
 
-use crate::find::args::find_parser;
+use crate::commands::{check::args::check_parser, find::args::find_parser};
 use bpaf::{construct, long, pure, Parser};
 
 #[derive(Clone, Debug)]
@@ -90,6 +90,12 @@ pub(crate) fn in_path_parser() -> impl Parser<PathBuf> {
         .help("Path to input file or directory")
 }
 
+pub(crate) fn out_path_parser() -> impl Parser<PathBuf> {
+    long("output")
+        .argument::<PathBuf>("OUTPUT_PATH")
+        .help("Path to output file or directory")
+}
+
 pub(crate) fn command_parser() -> impl Parser<AppParams> {
     let global = global_options_parser();
 
@@ -108,7 +114,12 @@ pub(crate) fn command_parser() -> impl Parser<AppParams> {
         .command("find")
         .help("Find a test given its hash");
 
-    let command = construct!([version, display, find]);
+    let check = construct!(Command::Check(check_parser()))
+        .to_options()
+        .command("check")
+        .help("Check integrity of MOO test files");
+
+    let command = construct!([version, display, find, check]);
 
     construct!(AppParams { global, command })
 }

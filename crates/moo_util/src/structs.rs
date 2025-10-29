@@ -20,10 +20,10 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+use crate::enums::CheckErrorType;
 
-pub use crate::{
-    registers::{MooRegister, MooRegisters},
-    test::moo_test::MooTest,
-    test_file::{stats::MooTestFileStats, MooTestFile},
-    types::{MooCycleState, MooFileMetadata, MooIvtOrder, MooTestGenMetadata},
-};
+#[derive(Clone, Debug, Default)]
+pub struct CheckErrorStatus {
+    pub(crate) e_type: CheckErrorType,
+    pub(crate) fixed:  bool,
+}
