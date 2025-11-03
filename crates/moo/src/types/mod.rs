@@ -32,9 +32,11 @@ pub mod ram;
 
 use std::fmt::Display;
 
+pub use comparison::*;
 pub use cycles::*;
 pub use metadata::*;
 pub use ram::*;
+
 pub use test::{moo_test::MooTest, test_state::MooTestState};
 
 use crate::test;
