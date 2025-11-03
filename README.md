@@ -1,14 +1,17 @@
-# MOO
+![moo_logo](/img/moo_header_01.png)
 
-The **Machine Opcode Operation (MOO)** File Format
+## The MOO File Format
 
 **MOO** is a simple chunked binary format used to encode x86 CPU [SingleStepTests](https://github.com/singleStepTests/).
 
+**MOO** stands for **M**achine **O**pcode **O**peration.
+
 ## Parser implementations
 
-- Rust: A Rust crate `moo-rs`, for working with MOO files is included in `/crates/moo`.
+- **Rust**: A Rust crate for working with MOO files, `moo-rs`, is available in [/crates/moo](/crates/moo).
+- **C++**: A single-header MOO parser is available in [/cpp](/cpp)
 
-## Utilities
+## MOO Utilities (Mootilities?)
 
 - A general utility for working with MOO files called `moo_util` is available
   under [/crates/moo_util](/crates/moo_util/README.md).
@@ -21,6 +24,6 @@ The **Machine Opcode Operation (MOO)** File Format
 > If you end up writing a MOO parser in another language, or expand the capabilities of one of the parsers above,
 > please consider contributing your parser via a PR so that others can benefit from your work.
 
-## Binary Documentation
+## MOO Format Specification
 
 See the documentation for the [current MOO specification, v1.1](/doc/moo_format_v1.md)
