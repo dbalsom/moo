@@ -22,7 +22,15 @@
 */
 
 pub use crate::{
-    registers::{MooRegister, MooRegisters, MooRegisters16, MooRegisters16Init, MooRegisters32, MooRegisters32Init},
+    registers::{
+        MooRegister,
+        MooRegisters,
+        MooRegisters16,
+        MooRegisters16Init,
+        MooRegisters32,
+        MooRegisters32Init,
+        MooRegistersInit,
+    },
     test::moo_test::MooTest,
     test_file::{stats::MooTestFileStats, MooTestFile},
     types::{MooCpuFamily, MooCpuType, MooCycleState, MooFileMetadata, MooIvtOrder, MooTestGenMetadata},
