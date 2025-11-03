@@ -49,15 +49,18 @@ Chunks can contain other chunks within their payload, creating a hierarchical fi
 The typical structure of a `MOO` file is:
 
 - `MOO ` chunk
+- `META` chunk
+- `RMSK` or `RM32` chunk (optional)
 - `TEST ` chunk
     - `NAME` chunk
     - `BYTS` chunk
     - `INIT` chunk
-        - `REGS` chunk
+        - `REGS` or `RG32` chunk
         - `RAM ` chunk
         - `QUEU` chunk (optional)
     - `FINA` chunk
-        - `REGS` chunk
+        - `REGS` or `RG32` chunk
+        - `RMSK` or `RM32` chunk (optional)
         - `RAM ` chunk
         - `QUEU` chunk (optional)
     - `CYCL` chunk
@@ -94,7 +97,32 @@ The `MOO ` header payload is at least 12 bytes as of file version 1.1, but may g
 The current version of `MOO ` is version 1.1. Additional chunk types may be added without incrementing the format
 version. Version increments will be reserved for changes to existing chunk types.
 
-## Top-level Chunk: `TEST`
+## Top-Level Chunks:
+
+### a) `META`
+
+A `META` chunk contains metadata common to all tests in a test file.
+
+| Field         | Size (bytes) | Description                                                                                                     |
+|---------------|--------------|-----------------------------------------------------------------------------------------------------------------|
+| major_version | 1            | The major version of the MOO test file collection this file belongs to                                          |
+| minor_version | 1            | The minor version of the MOO test file collection this file belongs to                                          |
+| cpu_type      | 1            | An enumeration describing the exact CPU model used to generate the tests in the file                            |
+| opcode        | 4            | `uint32` raw opcode for the tests in this file. Will be 0xFFFFFFFF if multiple opcodes are present in the file. |
+| mnemonic      | 8            | 8x`ASCII` bytes containing the mnemonic name of the instruction being tested in this file, padded with spaces.  |
+| test_ct       | 4            | `uint32` count of tests contained in the file (should match header count)                                       |
+| file_seed     | 8            | `uint64` base seed used to generate the tests in this file                                                      |
+| cpu_mode      | 1            | An enumeration describing the mode of the CPU being tested. For real-mode tests, this value is 0.               |
+| reserved      | 3            | Reserved bytes.                                                                                                 |
+
+See the [Enumerations and Bitfields](#enumerations-and-bitfields) section below for descriptions of the `cpu_type` and
+`cpu_mode` enumerations.
+
+### a) `RMSK` or `RM32`
+
+A `RMSK` or `RM32` chunk may appear at the top level. A description of these chunks is given in the section below.
+
+### b) `TEST`
 
 Each `TEST` chunk represents a single CPU test case, containing multiple **subchunks**, concatenated.
 
@@ -154,18 +182,20 @@ The `BYTS` chunk has a redundant length field to accomodate expansion.
 |--------------|--------------|---------------------------------------------------------------|
 | Chunk Type   | 4            | `ASCII_ID` of `INIT` or `FINA`                                |
 | Chunk Length | 4            | `uint32` length of payload containing all following subchunks |
-| Payload      | variable     | `REGS`, `RAM `, `QUEU` subchunks                              |
+| Payload      | variable     | `REGS`, `RG32`, `RAM `, `QUEU`, `EA32` subchunks              |
 
 - CPU state snapshots (initial and final).
 - Payload consists of further subchunks of the following possible types:
 
-| Subchunk Type | Description            |
-|---------------|------------------------|
-| `REGS`        | 16-bit register data   |
-| `RG32`        | 32-bit register data   |
-| `RAM `        | RAM entries            |
-| `QUEU`        | Queue data             |
-| `EA32`        | Effective address info |
+| Subchunk Type | Description                     |
+|---------------|---------------------------------|
+| `REGS`        | 16-bit register data            |
+| `RMSK`        | 16-bit register mask (optional) |
+| `RG32`        | 32-bit register data            |
+| `RM32`        | 32-bit register mask (optional) |
+| `RAM `        | RAM entries                     |
+| `QUEU`        | Queue data                      |
+| `EA32`        | Effective address info          |
 
 ---
 
@@ -194,9 +224,11 @@ From LSB to MSB, the order of registers in the bitfield is:
 - The `RMSK` chunk operates in a very similar fashion as the `REGS` chunk, representing each register in the regular
   16-bit register file. However, it contains masks for undefined register state in the event that an instruction leaves
   registers, portions of registers, or specific flags undefined.
-- The `RMSK` chunk will only appear in the final CPU state.
+- The `RMSK` chunk may appear at the top level of the file, in which case the same masks should be applied to every
+  test in the file. If the `RMSK` chunk appears in the final state, it should only be applied to the registers for that
+  specific test.
 - Applying the masks in order to each of your CPU registers and the registers and the registers in the final test state
-  should allow you to successfully ignore a tests' undefined behavior.
+  should allow you to successfully ignore a test's undefined behavior.
 - The size of this chunk is dependent on the number of bits set in the mask.
 
 | Field   | Size (bytes) | Description                                                                                     |
@@ -240,6 +272,9 @@ For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes shoul
 - The `RM32` chunk operates in a very similar fashion as the `RG32` chunk, representing each register in the regular
   32-bit x86 register file introduced with the 386. However, it contains masks for undefined register state in the event
   that an instruction leaves registers, portions of registers, or specific flags undefined.
+- The `RM32` chunk may appear at the top level of the file, in which case the same masks should be applied to every
+  test in the file. If the `RM32` chunk appears in the final state, it should only be applied to the registers for that
+  specific test.
 - The size of this chunk is dependent on the number of bits set in the mask.
 - Applying the masks in order to each of your CPU registers and the registers and the registers in the final test state
   should allow you to successfully ignore a tests' undefined behavior.
@@ -304,15 +339,15 @@ For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes shoul
 
 The segment register is encoded as an enumeration:
 
-| Value | Meaning |
-|-------|---------|
-| 0     | CS      |
-| 1     | SS      |
-| 2     | DS      |
-| 3     | ES      |
-| 4     | FS      |
-| 5     | GS      |
-| ...   | Invalid |
+| Value | Meaning       |
+|-------|---------------|
+| 0     | `CS` register |
+| 1     | `SS` register |
+| 2     | `DS` register |
+| 3     | `ES` register |
+| 4     | `FS` register |
+| 5     | `GS` register |
+| ...   | Invalid       |
 
 ---
 
@@ -323,12 +358,12 @@ The following chunks are again outside the `INIT` and `FINA` chunks, but within 
 - List of CPU bus cycle states.
 - Format:
 
-| Field       | Size (bytes)  | Description                                                                                                                                                                                                                                                                                                                                                                                                                |
-|-------------|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Cycle Count | 4             | `uint32` Number of cycles                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Cycles      | 15 bytes each | Each cycle encoded as (in order):<br>• `pin_bitfield0` (1 byte)<br>• `address_latch` (4 bytes, uint32)<br>• `segment_status` (1 byte enum)<br>• `memory_status` (1 byte bitfield)<br>• `io_status` (1 byte bitfield)<br>• `pin_bitfield1` (1 byte)<br>• `data_bus` (2 bytes, uint16)<br>• `bus_status` (1 byte bitfield)<br>• `t_state` (1 byte enum)<br>• `queue_op_status` (1 byte enum)<br>• `queue_byte_read` (1 byte) |
+| Field       | Size (bytes)  | Description                                                                                                                                                                                                                                                                                                                                                                                                  |
+|-------------|---------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Cycle Count | 4             | `uint32` Number of cycles                                                                                                                                                                                                                                                                                                                                                                                    |
+| Cycles      | 15 bytes each | Each cycle encoded as (in order):<br>• `pin_bitfield0` (1 byte)<br>• `address_latch` (`uint32`)<br>• `segment_status` (1 byte enum)<br>• `memory_status` (1 byte bitfield)<br>• `io_status` (1 byte bitfield)<br>• `pin_bitfield1` (1 byte)<br>• `data_bus` (`uint16`)<br>• `bus_status` (1 byte bitfield)<br>• `t_state` (1 byte enum)<br>• `queue_op_status` (1 byte enum)<br>• `queue_byte_read` (1 byte) |
 
-See the section `Enumerations and Bitfields` below for an explanation of these values.
+See the section [Enumerations and Bitfields](#enumerations-and-bitfields) below for an explanation of these values.
 
 ---
 
@@ -353,7 +388,7 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 - SHA-1 hash of the test data. The hashing method is subject to change. The hash is not intended to be used as error
   detection, but is simply intended to uniquely identify a test in an entire test suite. Test suites are checked for
-  duplicate hashes before publication.
+  duplicate hashes before publication. A test may be regenerated or otherwise altered while maintaining the same hash.
 
 - The hexadecimal ASCII representation of a hash may be added to a **revocation list** in a test suite in the event that
   a problematic or incorrect test is discovered.
@@ -366,20 +401,19 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 ## Enumerations and Bitfields
 
-### Pin Bitfield #1 (`pin_bitfield0`)
+### Pin Bitfield #0 (`pin_bitfield0`)
 
 | Bit | Description |
 |-----|-------------|
-| 0   | ALE pin*    |
-| 1   | BHE pin**   |
-| 2   | READY pin   |
-| 3   | LOCK pin    |
+| 0   | `ALE` pin** |
+| 1   | `BHE` pin   |
+| 2   | `READY` pin |
+| 3   | `LOCK` pin  |
 
-- The 8088, 8086, V20 and V30 tests only contain the ALE pin in this field.
-- *On 80386, ALE is synthesized by the inverse of the ADS pin
-- **Only present in this bitfield on 286 and 386. See `pin_bitfield1`
+- The 8088, 8086, V20 and V30 tests only contain the `ALE` pin in this field.
+- ****NOTE:** On 80386, `ALE` is synthesized by the inverse of the `ADS` pin, which was active-low.
 
-### Pin Bitfield #2 (`pin_bitfield1`)
+### Pin Bitfield #1 (`pin_bitfield1`)
 
 | Bit | Description |
 |-----|-------------|
@@ -391,13 +425,13 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 
 - Valid only for 8088, 8086, V20, V30
 
-| Value | Meaning    |
-|-------|------------|
-| 0     | ES         |
-| 1     | SS         |
-| 2     | CS or None |
-| 3     | DS         |
-| 4     | Not valid  |
+| Value | Meaning      |
+|-------|--------------|
+| 0     | `ES`         |
+| 1     | `SS`         |
+| 2     | `CS` or None |
+| 3     | `DS`         |
+| 4     | Not valid    |
 
 ---
 
@@ -451,6 +485,19 @@ See the section `Enumerations and Bitfields` below for an explanation of these v
 | 13    | "CODE"       | Code Fetch            |
 | 14    | "PASV"       | Passive / Reserved    |
 | 15    | "PASV"       | Passive / Invalid     |
+
+#### 80386 Bus Status Decode
+
+| Value | Abbreviation | Meaning                         |
+|-------|--------------|---------------------------------|
+| 0     | "INTA"       | Interrupt Acknowledge / Passive |
+| 1     | "PASV"       | Passive                         |
+| 2     | "IOR"        | IO Read                         |
+| 3     | "IOW"        | IO Write                        |
+| 4     | "CODE"       | Code Fetch                      |
+| 5     | "HALT"       | Halt                            |
+| 6     | "MEMR"       | Memory Read                     |
+| 7     | "MEMW"       | Memory Write                    |
 
 ---
 
