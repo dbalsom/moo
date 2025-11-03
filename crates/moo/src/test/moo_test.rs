@@ -23,9 +23,10 @@
 use crate::{
     prelude::MooCycleState,
     registers::{MooRegister, MooRegisterDiff, MooRegisters},
-    test::{comparison::MooComparison, test_state::MooTestState},
+    test::test_state::MooTestState,
     types::{
         chunks::{MooBytesChunk, MooChunkType, MooNameChunk, MooTestChunk},
+        comparison::MooComparison,
         flags::{MooCpuFlag, MooCpuFlagsDiff},
         MooCpuFamily,
         MooCpuMode,
@@ -72,14 +73,17 @@ pub struct MooTest {
 impl MooTest {
     /// Create a new [MooTest].
     /// # Arguments
-    /// * `name` - A human-readable name for the test. This is typically the disassembly of the instruction(s) being tested.
-    /// * `gen_metadata` - An optional [MooTestGenMetadata](crate::types::MooTestGenMetadata) struct containing information about how the test was generated.
+    /// * `name` - A human-readable name for the test. This is typically the disassembly of the
+    ///     instruction(s) being tested.
+    /// * `gen_metadata` - An optional [MooTestGenMetadata](crate::types::MooTestGenMetadata) struct
+    ///     containing information about how the test was generated.
     /// * `bytes` - The raw bytes that comprise the instruction(s) being tested.
     /// * `initial_state` - A [MooTestState] struct describing the initial CPU state before execution.
     /// * `final_state` - A [MooTestState] struct describing the final CPU state after execution.
     /// * `cycles` - A slice of [MooCycleState] structs representing the cpu cycles that occurred during execution.
     /// * `exception` - An optional [MooException] if an exception was raised during execution.
-    /// * `hash` - An optional SHA-1 hash of the test used to uniquely identify it. If not provided, the hash will be calculated when the test is written using [MooTestFile::write](crate::prelude::MooTestFile::write).
+    /// * `hash` - An optional SHA-1 hash of the test used to uniquely identify it. If not provided,
+    ///     the hash will be calculated when the test is written using [MooTestFile::write](crate::prelude::MooTestFile::write).
     pub fn new(
         name: String,
         gen_metadata: Option<MooTestGenMetadata>,
@@ -107,6 +111,11 @@ impl MooTest {
         &self.name
     }
 
+    /// Retrieve a mutable reference to the human-readable name of the test (typically the disassembly of the instruction(s) being tested).
+    pub fn name_mut(&mut self) -> &mut String {
+        &mut self.name
+    }
+
     /// Retrieve the optional test generation metadata for the test.
     pub fn gen_metadata(&self) -> Option<&MooTestGenMetadata> {
         self.gen_metadata.as_ref()
@@ -115,6 +124,11 @@ impl MooTest {
     /// Retrieve a reference to a slice of the raw bytes that comprise the instruction(s) being tested.
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
+    }
+
+    /// Retrieve a mutable reference to the vector of raw bytes that comprise the instruction(s) being tested.
+    pub fn bytes_mut(&mut self) -> &mut Vec<u8> {
+        &mut self.bytes
     }
 
     /// Retrieve a reference to the [MooTestState] representing the initial CPU state.
@@ -320,6 +334,8 @@ impl MooTest {
         }
     }
 
+    /// Determine the differences in CPU registers between the initial and final states.
+    /// Returns a vector of [MooRegisterDiff] entries representing the registers that changed.
     pub fn diff_regs(&self) -> Vec<MooRegisterDiff> {
         let mut diff_regs = Vec::new();
 
@@ -553,6 +569,9 @@ impl MooTest {
         diff_regs
     }
 
+    /// Determine the CPU mode of the test instruction.
+    /// ## Arguments:
+    /// * `cpu_family` - The CPU family to consider when determining CPU mode.
     pub fn cpu_mode(&self, _cpu_family: impl Into<MooCpuFamily>) -> MooCpuMode {
         // A lack of any descriptors indicates real mode.
         if self.initial_state.descriptors.is_none() {
@@ -565,6 +584,10 @@ impl MooTest {
         MooCpuMode::RealMode
     }
 
+    /// Determine the native segment size of the test instruction.
+    /// ## Arguments:
+    /// * `cpu_family` - The CPU family to consider when determining operand size. Only the 386
+    ///     family supports operand size overrides.
     pub fn segment_size(&self, cpu_family: impl Into<MooCpuFamily>) -> MooSegmentSize {
         match self.cpu_mode(cpu_family) {
             MooCpuMode::RealMode => MooSegmentSize::Sixteen,
@@ -581,6 +604,10 @@ impl MooTest {
         }
     }
 
+    /// Determine the operand size of the test instruction.
+    /// ## Arguments:
+    /// * `cpu_family` - The CPU family to consider when determining operand size. Only the 386
+    ///     family supports operand size overrides.
     pub fn operand_size(&self, cpu_family: impl Into<MooCpuFamily>) -> MooOperandSize {
         let cpu_family = cpu_family.into();
         match cpu_family {
@@ -593,6 +620,10 @@ impl MooTest {
         }
     }
 
+    /// Determine if the test instruction has an operand size override prefix.
+    /// ## Arguments:
+    /// * `cpu_family` - The CPU family to consider when determining operand size. Only the 386
+    ///     family supports operand size overrides.
     pub fn has_operand_size_override(&self, cpu_family: impl Into<MooCpuFamily>) -> bool {
         let cpu_family = cpu_family.into();
         match cpu_family {
@@ -606,6 +637,10 @@ impl MooTest {
         }
     }
 
+    /// Determine if the test instruction has an address size override prefix.
+    /// ## Arguments:
+    /// * `cpu_family` - The CPU family to consider when determining address size. Only the 386
+    ///    family supports address size overrides.
     pub fn has_address_size_override(&self, cpu_family: impl Into<MooCpuFamily>) -> bool {
         let cpu_family = cpu_family.into();
         match cpu_family {
@@ -619,7 +654,7 @@ impl MooTest {
         }
     }
 
-    /// Write a [MooTest] to an implementor of [Write](std::io::Write) + [Seek](std::io::Seek).
+    /// Write a [MooTest] to an implementor of [Write] + [Seek].
     /// Arguments:
     /// * `index` - The index of the test.
     /// * `writer` - The writer to write the MOO file to.

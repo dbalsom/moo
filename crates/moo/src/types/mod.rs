@@ -22,6 +22,7 @@
 */
 
 pub mod chunks;
+pub mod comparison;
 pub mod cycles;
 pub mod effective_address;
 pub mod errors;
@@ -34,12 +35,12 @@ use std::fmt::Display;
 pub use cycles::*;
 pub use metadata::*;
 pub use ram::*;
-pub use test::{comparison::MooComparison, moo_test::MooTest, test_state::MooTestState};
+pub use test::{moo_test::MooTest, test_state::MooTestState};
 
 use crate::test;
 use binrw::binrw;
 
-/// [MooCpuType] represents the type of CPU used to produce a test case.
+/// [MooCpuType] represents the type of CPU used to produce a particular collection of [MooTestFile](crate::prelude::MooTestFile).
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[binrw]
@@ -80,6 +81,8 @@ impl From<MooCpuType> for MooCpuFamily {
     }
 }
 
+/// [MooCpuMode] represents the operating mode of the CPU used to produce a particular [MooTestFile](crate::prelude::MooTestFile).
+/// This affects how certain instructions behave, especially on 80286 and later CPUs.
 #[derive(Copy, Clone, Debug, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize))]
 #[binrw]
@@ -174,13 +177,18 @@ impl Display for MooBusState {
     }
 }
 
+/// [MooIvtOrder] represents the order of operations performed by a CPU when an interrupt table
+/// vector is accessed.
 #[derive(Copy, Clone, Debug)]
 pub enum MooIvtOrder {
+    /// The CPU reads the vector from memory before pushing the current IP/CS to the stack.
     ReadFirst,
+    /// The CPU pushes the current IP/CS to the stack before reading the vector from memory.
     PushFirst,
 }
 
 impl From<MooCpuType> for MooIvtOrder {
+    /// Convert a [MooCpuType] to its corresponding [MooIvtOrder].
     fn from(cpu_type: MooCpuType) -> Self {
         match cpu_type {
             MooCpuType::Intel80286 => MooIvtOrder::PushFirst,
@@ -189,12 +197,12 @@ impl From<MooCpuType> for MooIvtOrder {
     }
 }
 
-/// [MooTState] represents the T-state of a CPU cycle.
+/// [MooTState] represents the T-state of the CPU.
 #[derive(Copy, Clone, PartialEq)]
 pub enum MooTState {
-    /// Idle T-state
+    /// Idle T-state, when a bus cycle is not in progress.
     Ti,
-    /// First T-state of a bus cycle.
+    /// First T-state of a bus cycle. ALE or ADS is asserted on this cycle.
     T1,
     /// Second T-state of a bus cycle.
     T2,
@@ -202,7 +210,7 @@ pub enum MooTState {
     T3,
     /// Fourth T-state of a bus cycle (for 8086/88, 80186/88, V20/30).
     T4,
-    /// Wait state
+    /// Wait state. May occur between T3 and T4.
     Tw,
 }
 
@@ -224,6 +232,7 @@ impl TryFrom<u8> for MooTState {
 }
 
 impl MooCpuType {
+    /// Returns the number of characters to use when displaying this CPU's address bus in cycle logs.
     pub fn bus_chr_width(&self) -> usize {
         use MooCpuType::*;
         match self {
@@ -233,6 +242,7 @@ impl MooCpuType {
         }
     }
 
+    /// Returns the number of characters to use when displaying this CPU's data bus in cycle logs.
     pub fn data_chr_width(&self) -> usize {
         use MooCpuType::*;
         match self {
@@ -257,6 +267,7 @@ impl MooCpuType {
         }
     }
 
+    /// Convert a [MooCpuType] to its static string representation.
     pub fn to_str(&self) -> &str {
         use MooCpuType::*;
         match self {
@@ -272,6 +283,7 @@ impl MooCpuType {
         }
     }
 
+    /// Convert a [MooTState] to its string representation for this CPU type.
     pub fn tstate_to_string(&self, state: MooTState) -> String {
         use MooTState::*;
         match self {
@@ -293,6 +305,7 @@ impl MooCpuType {
         }
     }
 
+    /// Decode a raw CPU bus status byte into a [MooBusState] for this CPU type.
     pub fn decode_status(&self, status_byte: u8) -> MooBusState {
         use MooBusState::*;
         use MooCpuFamily::*;
@@ -342,6 +355,7 @@ impl MooCpuType {
         }
     }
 
+    /// Return the masked raw bus status byte for this CPU type.
     pub fn raw_status(&self, status_byte: u8) -> u8 {
         match self {
             MooCpuType::Intel80286 => status_byte & 0x0F,
@@ -428,14 +442,20 @@ impl MooCpuType {
 //     pub millisecond: u16,
 // }
 
+/// A [MooException] represents the `EXCP` chunk in a MOO file and contains information about the
+/// exception that a test execution may have triggered.
 #[derive(Clone, Debug)]
 #[binrw]
 #[brw(little)]
 pub struct MooException {
+    /// The exception number that was triggered.
     pub exception_num: u8,
+    /// The address of the flag register pushed to the stack by the exception handler.
     pub flag_address:  u32,
 }
 
+/// A [MooSegmentSize] represents the native size of a segment.
+/// This is only relevant for the 80386 family, as earlier CPUs only support 16-bit segments.
 #[derive(Clone, Debug)]
 pub enum MooSegmentSize {
     Sixteen,
@@ -443,6 +463,8 @@ pub enum MooSegmentSize {
 }
 
 impl MooSegmentSize {
+    /// Return the effective operand size of an instruction for this segment size, given whether an
+    /// operand size override prefix is present.
     pub fn operand_size(&self, has_operand_override: bool) -> MooOperandSize {
         match (self, has_operand_override) {
             (MooSegmentSize::Sixteen, false) => MooOperandSize::Sixteen,
@@ -451,6 +473,8 @@ impl MooSegmentSize {
             (MooSegmentSize::ThirtyTwo, true) => MooOperandSize::Sixteen,
         }
     }
+    /// Return the effective address size of an instruction for this segment size, given whether an
+    /// address size override prefix is present.
     pub fn address_size(&self, has_address_override: bool) -> MooAddressSize {
         match (self, has_address_override) {
             (MooSegmentSize::Sixteen, false) => MooAddressSize::Sixteen,
@@ -461,14 +485,20 @@ impl MooSegmentSize {
     }
 }
 
-#[derive(Clone, Debug)]
+/// An enum representing the operand size of an instruction.
+/// Only applicable to 80386 and later CPUs.
+#[derive(Clone, Debug, Default)]
 pub enum MooOperandSize {
+    #[default]
     Sixteen,
     ThirtyTwo,
 }
 
-#[derive(Clone, Debug)]
+/// An enum representing the address size of an instruction.
+/// Only applicable to 80386 and later CPUs.
+#[derive(Clone, Debug, Default)]
 pub enum MooAddressSize {
+    #[default]
     Sixteen,
     ThirtyTwo,
 }

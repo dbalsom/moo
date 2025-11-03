@@ -21,7 +21,7 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-use std::io::{Cursor, Write};
+use std::io::{Cursor, Seek, Write};
 
 use crate::{
     registers::*,
@@ -50,6 +50,8 @@ pub struct MooTestState {
 }
 
 impl MooTestState {
+    /// Create a new [MooTestState] instance.
+    /// Typically called by the test generation code - you won't need to call this directly.
     pub fn new(
         s_type: MooStateType,
         regs_start: &MooRegistersInit,
@@ -75,27 +77,34 @@ impl MooTestState {
         }
     }
 
+    /// Return a reference to the [MooRegisters] for this state.
     pub fn regs(&self) -> &MooRegisters {
         &self.regs
     }
 
+    /// Return a mutable reference to the [MooRegisters] for this state.
     pub fn regs_mut(&mut self) -> &mut MooRegisters {
         &mut self.regs
     }
 
+    /// Return a reference to a slice representing the instruction queue contents for this state.
     pub fn queue(&self) -> &[u8] {
         &self.queue
     }
 
+    /// Return a reference to a slice representing the RAM contents for this state as [MooRamEntry]s.
     pub fn ram(&self) -> &[MooRamEntry] {
         &self.ram
     }
 
+    /// Return a reference to the [MooEffectiveAddress] for this state, if present.
     pub fn ea(&self) -> Option<&MooEffectiveAddress> {
         self.ea.as_ref()
     }
 
-    pub fn write<W: Write + std::io::Seek>(&self, writer: &mut W) -> BinResult<()> {
+    /// Write this [MooTestState] to the given implementor of [Write] + [Seek] as a `MOO` `INIT` or
+    /// `FINA` chunk, depending on the state's [MooStateType].
+    pub fn write<WS: Write + Seek>(&self, writer: &mut WS) -> BinResult<()> {
         // Create a buffer to write our state data into, so we can write it to the final
         // chunk in one go.
         let mut state_buffer = Cursor::new(Vec::new());

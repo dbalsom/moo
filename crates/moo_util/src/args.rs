@@ -27,12 +27,12 @@ use std::{
 };
 
 use crate::commands::{
-    check::args::CheckParams,
+    check::args::{check_parser, CheckParams},
     display::args::{display_parser, DisplayParams},
-    find::args::FindParams,
+    edit::args::{edit_parser, EditParams},
+    find::args::{find_parser, FindParams},
 };
 
-use crate::commands::{check::args::check_parser, find::args::find_parser};
 use bpaf::{construct, long, pure, Parser};
 
 #[derive(Clone, Debug)]
@@ -42,6 +42,7 @@ pub(crate) enum Command {
     //Dump(DumpParams),
     Find(FindParams),
     Check(CheckParams),
+    Edit(EditParams),
 }
 
 impl Display for Command {
@@ -52,6 +53,7 @@ impl Display for Command {
             //Command::Dump(_) => write!(f, "dump"),
             Command::Find(_) => write!(f, "find"),
             Command::Check(_) => write!(f, "check"),
+            Command::Edit(_) => write!(f, "edit"),
         }
     }
 }
@@ -90,6 +92,12 @@ pub(crate) fn in_path_parser() -> impl Parser<PathBuf> {
         .help("Path to input file or directory")
 }
 
+pub(crate) fn in_schema_parser() -> impl Parser<PathBuf> {
+    long("schema")
+        .argument::<PathBuf>("SCHEMA_PATH")
+        .help("Path to CSV schema file for operation")
+}
+
 pub(crate) fn out_path_parser() -> impl Parser<PathBuf> {
     long("output")
         .argument::<PathBuf>("OUTPUT_PATH")
@@ -119,7 +127,12 @@ pub(crate) fn command_parser() -> impl Parser<AppParams> {
         .command("check")
         .help("Check integrity of MOO test files");
 
-    let command = construct!([version, display, find, check]);
+    let edit = construct!(Command::Edit(edit_parser()))
+        .to_options()
+        .command("edit")
+        .help("Edit properties of MOO test files");
+
+    let command = construct!([version, display, find, check, edit]);
 
     construct!(AppParams { global, command })
 }

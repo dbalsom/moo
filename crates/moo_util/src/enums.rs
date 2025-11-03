@@ -74,6 +74,24 @@ impl CheckErrorType {
     }
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub enum EditErrorType {
+    #[default]
+    NoError,
+    FileReadError(String),
+}
+
+impl Display for EditErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EditErrorType::NoError => write!(f, "No Error"),
+            EditErrorType::FileReadError(e) => {
+                write!(f, "Error reading file: {}", e)
+            }
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum CheckErrorDetail {
     FileError(Vec<CheckErrorStatus>),
@@ -87,4 +105,10 @@ impl CheckErrorDetail {
             CheckErrorDetail::TestError { errors, .. } => errors,
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum EditErrorDetail {
+    FileError(Vec<EditErrorType>),
+    TestError { index: usize, hash: String, errors: Vec<EditErrorType> },
 }

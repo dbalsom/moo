@@ -25,6 +25,7 @@ mod commands;
 mod enums;
 mod file;
 mod functions;
+mod schema_db;
 mod structs;
 mod util;
 mod working_set;
@@ -47,6 +48,7 @@ fn main() -> Result<(), Error> {
         Command::Display(params) => commands::display::run(&app_params.global, params),
         Command::Find(params) => commands::find::run(&app_params.global, params),
         Command::Check(params) => commands::check::run(&app_params.global, params),
+        Command::Edit(params) => commands::edit::run(&app_params.global, params),
     };
 
     match command_result {

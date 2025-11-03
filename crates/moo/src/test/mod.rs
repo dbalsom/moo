@@ -21,6 +21,5 @@
     DEALINGS IN THE SOFTWARE.
 */
 
-pub mod comparison;
 pub mod moo_test;
 pub mod test_state;

@@ -106,6 +106,8 @@ pub struct MooTestFile {
     hashes: HashMap<String, usize>,
     /// Optional metadata about the file, such as generator info.
     metadata: Option<MooFileMetadata>,
+    /// Optional register mask to use for all tests in this file.
+    register_mask: Option<MooRegisters>,
     /// Whether the file was read as gzip-compressed.
     compressed: bool,
 }
@@ -138,56 +140,117 @@ impl MooTestFile {
             tests: Vec::with_capacity(capacity),
             hashes: HashMap::with_capacity(capacity),
             metadata: None,
+            register_mask: None,
             compressed: false,
         }
     }
 
-    /// Set the optional file Metadata struct
+    /// Returns a reference to the optional [MooFileMetadata] struct, if present.
+    pub fn metadata(&self) -> Option<&MooFileMetadata> {
+        self.metadata.as_ref()
+    }
+
+    /// Returns a mutable reference to the optional [MooFileMetadata] struct, if present.
+    pub fn metadata_mut(&mut self) -> Option<&mut MooFileMetadata> {
+        self.metadata.as_mut()
+    }
+
+    /// Set the optional [MooFileMetadata] struct
     pub fn set_metadata(&mut self, metadata: MooFileMetadata) {
         self.cpu_type = metadata.cpu_type;
         self.metadata = Some(metadata);
     }
 
+    /// Returns a reference to the optional register mask [MooRegisters] struct, if present.
+    pub fn register_mask(&self) -> Option<&MooRegisters> {
+        self.register_mask.as_ref()
+    }
+
+    /// Set the optional register mask [MooRegisters] struct
+    pub fn set_register_mask(&mut self, register_mask: MooRegisters) {
+        self.register_mask = Some(register_mask);
+    }
+
+    /// Returns whether the file was read as gzip-compressed.
+    /// This flag persists when writing the file back out, unless changed via [MooTestFile::set_compressed].
     pub fn compressed(&self) -> bool {
         self.compressed
     }
 
+    /// Set whether the file should be written as gzip-compressed.
     pub fn set_compressed(&mut self, compressed: bool) {
         self.compressed = compressed;
     }
 
-    pub fn metadata(&self) -> Option<&MooFileMetadata> {
-        self.metadata.as_ref()
-    }
-
+    /// Appends a [MooTest] to the test file's test vector.
     pub fn add_test(&mut self, test: MooTest) {
         self.tests.push(test);
     }
 
-    pub fn version(&self) -> u8 {
-        self.major_version
+    /// Truncates the test vector to the specified new count.
+    pub fn trim_tests(&mut self, new_ct: usize) {
+        self.tests.truncate(new_ct);
+
+        if let Some(metadata) = self.metadata.as_mut() {
+            metadata.test_ct = self.tests.len() as u32;
+        }
     }
 
-    pub fn cpu_type(&self) -> &MooCpuType {
-        &self.cpu_type
+    /// Returns the `MOO` file format version as a tuple of (major, minor).
+    pub fn version(&self) -> (u8, u8) {
+        (self.major_version, self.minor_version)
     }
 
+    pub fn set_version(&mut self, major_opt: Option<u8>, minor_opt: Option<u8>) {
+        if let Some(major) = major_opt {
+            if major > MOO_MAJOR_VERSION {
+                panic!("major version should be <= {}", MOO_MAJOR_VERSION);
+            }
+            self.major_version = major;
+        }
+
+        if let Some(minor) = minor_opt {
+            if minor > MOO_MINOR_VERSION {
+                panic!("minor version should be <= {}", MOO_MINOR_VERSION);
+            }
+            self.minor_version = minor;
+        }
+    }
+
+    /// Returns the CPU architecture as a [MooCpuType] enum.
+    /// This is derived from the architecture string in the [MooTestFile] header if a [MooFileMetadata]
+    /// chunk is not present, otherwise it is taken from the metadata's `cpu_type` field.
+    pub fn cpu_type(&self) -> MooCpuType {
+        self.cpu_type
+    }
+
+    /// Returns a reference to the architecture string from the [MooTestFile] header.
     pub fn arch(&self) -> &str {
         &self.arch
     }
 
+    /// Returns a reference to a slice containing the individual [MooTest]s in the test file.
     pub fn tests(&self) -> &[MooTest] {
         &self.tests
     }
 
+    /// Returns a mutable reference to a slice containing the individual [MooTest]s in the test file.
     pub fn tests_mut(&mut self) -> &mut [MooTest] {
         &mut self.tests
     }
 
+    /// Returns the number of tests in the file.
     pub fn test_ct(&self) -> usize {
         self.tests.len()
     }
 
+    /// Read a [MooTestFile] from an implementor of [Read] + [Seek].
+    /// Automatically detects gzip compression if the `gzip` feature is enabled.
+    ///
+    /// # Arguments:
+    /// * `reader` - The reader to read the MOO file from.
+    /// # Returns:
+    /// * A [MooTestFile] struct representing the parsed file, or an error if parsing fails.
     pub fn read<RS: Read + Seek>(reader: &mut RS) -> BinResult<MooTestFile> {
         // Seek to the start of the reader.
         reader.seek(SeekFrom::Start(0))?;
@@ -326,6 +389,16 @@ impl MooTestFile {
                     let metadata: MooFileMetadata = BinRead::read(reader)?;
                     log::debug!("Reading FileMetadata chunk: {:?}", metadata.mnemonic());
                     new_file.set_metadata(metadata);
+                }
+                MooChunkType::RegisterMask16 => {
+                    // Read a top-level `RMSK` chunk.
+                    let regs = MooRegisters16::read(reader)?;
+                    new_file.set_register_mask(MooRegisters::Sixteen(regs));
+                }
+                MooChunkType::RegisterMask32 => {
+                    // Read a top-level `RM32` chunk.
+                    let regs = MooRegisters32::read(reader)?;
+                    new_file.set_register_mask(MooRegisters::ThirtyTwo(regs));
                 }
                 MooChunkType::TestHeader => {
                     // Do a sanity check - did the previous test have both required states?
@@ -605,9 +678,9 @@ impl MooTestFile {
         }
     }
 
-    /// Write a [MooTestFile] to an implementor of [Write](std::io::Write) + [Seek](std::io::Seek).
-    /// Arguments:
-    /// * `writer` - The writer to write the MOO file to.
+    /// Write a [MooTestFile] to an implementor of [Write] + [Seek].
+    /// # Arguments:
+    /// * `writer` - The writer to write the `MOO` file to.
     /// * `preserve_hash` - If true, preserves the existing test hashes, if present. If false, test
     ///      hashes will be recalculated from the test data. Test hashes will be recalculated if
     ///      missing, regardless of this flag.
@@ -645,6 +718,18 @@ impl MooTestFile {
         // Write the file metadata chunk, if present
         if let Some(metadata) = &self.metadata {
             MooChunkType::FileMetadata.write(&mut cursor, metadata)?;
+        }
+
+        // Write the register mask chunk, if present
+        if let Some(register_mask) = &self.register_mask {
+            match register_mask {
+                MooRegisters::Sixteen(regs) => {
+                    MooChunkType::RegisterMask16.write(&mut cursor, regs)?;
+                }
+                MooRegisters::ThirtyTwo(regs) => {
+                    MooChunkType::RegisterMask32.write(&mut cursor, regs)?;
+                }
+            }
         }
 
         // Write the file header + metadata to the file writer.

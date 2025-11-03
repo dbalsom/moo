@@ -20,12 +20,7 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
-use crate::enums::CheckErrorType;
-use serde::Deserialize;
-use std::str::FromStr;
 
-#[derive(Clone, Debug, Default)]
-pub struct CheckErrorStatus {
-    pub(crate) e_type: CheckErrorType,
-    pub(crate) fixed:  bool,
-}
+pub mod args;
+pub mod run;
+pub use run::run;

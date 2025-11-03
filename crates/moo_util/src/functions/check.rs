@@ -20,17 +20,22 @@
     FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
 */
+
 use crate::{
+    commands::check::args::CheckParams,
     enums::{CheckErrorDetail, CheckErrorType},
     structs::CheckErrorStatus,
 };
-use moo::{prelude::*, types::MooCpuMode};
-use std::io::Cursor;
+use std::{io::Cursor, path::Path};
 
+use crate::file::group_extension_from_path;
 use anyhow::Result;
-use moo::types::{MooBusState, MooCpuFamily};
+use moo::{
+    prelude::*,
+    types::{MooBusState, MooCpuFamily, MooCpuMode, MooRamEntries},
+};
 
-pub fn check_metadata(metadata: &MooFileMetadata) -> Vec<CheckErrorStatus> {
+pub fn check_metadata(metadata: &mut MooFileMetadata, file_path: impl AsRef<Path>, fix: bool) -> Vec<CheckErrorStatus> {
     let mut errors: Vec<CheckErrorStatus> = Vec::new();
 
     // Check that the CPU type is valid.
@@ -41,6 +46,24 @@ pub fn check_metadata(metadata: &MooFileMetadata) -> Vec<CheckErrorStatus> {
     }
 
     // Additional metadata checks can go here.
+    let extension = group_extension_from_path(&file_path);
+
+    if metadata.group_extension() != extension {
+        let mut fixed = false;
+
+        let error_str = format!(
+            "File group extension '{:?}' does not match metadata group extension '{:?}'",
+            extension,
+            metadata.group_extension()
+        );
+
+        if fix {
+            metadata.extension = extension.unwrap_or(0xFF);
+            fixed = true;
+        }
+
+        errors.push(CheckErrorType::BadMetadata(error_str).fixed(fixed));
+    }
 
     errors
 }
@@ -49,19 +72,19 @@ pub fn check_test(
     index: usize,
     test: &mut MooTest,
     metadata: &MooFileMetadata,
-    fix: bool,
+    opts: &CheckParams,
 ) -> Result<Option<CheckErrorDetail>> {
     let mut errors: Vec<CheckErrorStatus> = Vec::new();
 
-    check_test_universal(test, metadata, fix, &mut errors)?;
+    check_test_universal(test, metadata, opts, &mut errors)?;
 
     let mode = test.cpu_mode(metadata.cpu_type);
     match mode {
         MooCpuMode::RealMode => {
-            check_test_real(test, metadata, fix, &mut errors)?;
+            check_test_real(test, metadata, opts.fix, &mut errors)?;
         }
         MooCpuMode::ProtectedMode => {
-            check_test_protected(test, metadata, fix, &mut errors)?;
+            check_test_protected(test, metadata, opts.fix, &mut errors)?;
         }
         _ => {
             log::warn!("Unsupported CPU mode for test check: {:?}", mode);
@@ -83,10 +106,10 @@ pub fn check_test(
 pub fn check_test_universal(
     test: &mut MooTest,
     metadata: &MooFileMetadata,
-    fix: bool,
+    opts: &CheckParams,
     errors: &mut Vec<CheckErrorStatus>,
 ) -> Result<()> {
-    check_disassembly(test, metadata, fix, errors)?;
+    check_disassembly(test, metadata, opts, errors)?;
 
     if test.cycles().is_empty() {
         errors.push(CheckErrorType::CycleStateError("No cycle states present!".to_string()).fixed(false));
@@ -241,25 +264,26 @@ pub fn check_test_real(
 }
 
 pub fn check_test_protected(
-    test: &MooTest,
-    metadata: &MooFileMetadata,
-    fix: bool,
-    errors: &mut Vec<CheckErrorStatus>,
+    _test: &MooTest,
+    _metadata: &MooFileMetadata,
+    _fix: bool,
+    _errors: &mut Vec<CheckErrorStatus>,
 ) -> Result<()> {
     Ok(())
 }
 
 pub fn check_disassembly(
     test: &mut MooTest,
-    metadata: &MooFileMetadata,
-    fix: bool,
+    _metadata: &MooFileMetadata,
+    opts: &CheckParams,
     errors: &mut Vec<CheckErrorStatus>,
 ) -> Result<()> {
     use marty_dasm::prelude::*;
 
     // Check disassembly
-    let test_name_trimmed = test.name().trim();
-    if test_name_trimmed != test.name().trim() {
+    let test_name = test.name().to_string();
+    let test_name_trimmed = test_name.trim();
+    if test_name_trimmed != test_name {
         errors.push(
             CheckErrorType::DisassemblyError(format!(
                 "Test name has leading or trailing whitespace: '{}'",
@@ -275,27 +299,23 @@ pub fn check_disassembly(
         return Ok(());
     }
 
-    let mut decoder = Decoder::new(
-        Cursor::new(&decode_vec),
-        DecoderOptions {
-            cpu: CpuType::Intel80386,
-            ..Default::default()
-        },
-    );
-    let marty_i = match decoder.decode_next() {
-        Ok(instr) => instr,
-        Err(e) => {
-            errors.push(
-                CheckErrorType::DisassemblyError(format!(
-                    "Failed to decode instruction '{}' [{:0X?}]: {}",
-                    test.name(),
-                    test.bytes(),
-                    e
-                ))
-                .fixed(false),
-            );
-            return Ok(());
-        }
+    let decoder_opts = DecoderOptions {
+        cpu: CpuType::Intel80386,
+        ..Default::default()
+    };
+    let mut decoder = Decoder::new(Cursor::new(&decode_vec), decoder_opts);
+
+    let decode_result = decoder.decode_next();
+
+    let log_decode_err = |test: &MooTest, e: &mut Vec<CheckErrorStatus>, fixed: bool| {
+        e.push(
+            CheckErrorType::DisassemblyError(format!(
+                "Failed to decode instruction '{}' [{:0X?}]",
+                test.name(),
+                test.bytes(),
+            ))
+            .fixed(fixed),
+        );
     };
 
     let mut output = String::new();
@@ -305,17 +325,68 @@ pub fn check_disassembly(
         ..FormatOptions::default()
     };
 
-    NasmFormatter.format_instruction(&marty_i, &options, &mut output);
+    let marty_i = match decode_result {
+        Ok(instr) => instr,
+        Err(_e) => {
+            // Decode failed, probably due to insufficient bytes.
+            // Attempt to expand the bytes array by reading fetches from the initial RAM state.
+            let ram = test.initial_state().ram.clone();
+            let ram_entries = MooRamEntries::from(ram.as_slice());
 
-    if test_name_trimmed != output {
-        // Disassembly does not match test name.
-        errors.push(
-            CheckErrorType::DisassemblyError(format!(
-                "Disassembly does not match test name: '{}' != '{}'",
-                test_name_trimmed, output
-            ))
-            .fixed(false),
-        )
+            if opts.fix {
+                if let Some(inst_offset) = ram_entries.find(test.bytes()) {
+                    let fetches = ram_entries.get_consecutive_bytes(inst_offset);
+
+                    let mut decoder = Decoder::new(Cursor::new(&fetches), decoder_opts);
+                    match decoder.decode_next() {
+                        Ok(instr) => {
+                            log_decode_err(test, errors, true);
+                            *test.bytes_mut() = instr.instruction_bytes.clone();
+
+                            let mut output = String::new();
+                            NasmFormatter.format_instruction(&instr, &options, &mut output);
+                            *test.name_mut() = output;
+
+                            instr
+                        }
+                        Err(_e) => {
+                            log_decode_err(test, errors, false);
+                            return Ok(());
+                        }
+                    }
+                }
+                else {
+                    log_decode_err(test, errors, false);
+                    return Ok(());
+                }
+            }
+            else {
+                log_decode_err(test, errors, false);
+                return Ok(());
+            }
+        }
+    };
+
+    if opts.check_disassembly {
+        NasmFormatter.format_instruction(&marty_i, &options, &mut output);
+
+        if test_name_trimmed != output {
+            // Disassembly does not match test name.
+            let mut fixed = false;
+
+            if opts.fix && opts.update_disassembly {
+                *test.name_mut() = output.clone();
+                fixed = true;
+            }
+
+            errors.push(
+                CheckErrorType::DisassemblyError(format!(
+                    "Disassembly does not match test name: '{}' != '{}'",
+                    test_name_trimmed, output
+                ))
+                .fixed(fixed),
+            )
+        }
     }
 
     // if test_name_trimmed == "(bad)" {

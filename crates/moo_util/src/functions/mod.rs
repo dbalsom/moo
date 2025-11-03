@@ -21,4 +21,6 @@
     DEALINGS IN THE SOFTWARE.
 */
 
+pub mod add_masks;
 pub mod check;
+pub mod trim;

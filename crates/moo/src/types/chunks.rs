@@ -44,10 +44,14 @@ pub enum MooChunkType {
     FinalState,
     #[brw(magic = b"REGS")]
     Registers16,
+    #[brw(magic = b"RMSK")]
+    RegisterMask16,
     #[brw(magic = b"REGX")]
     XRegisters,
     #[brw(magic = b"RG32")]
     Registers32,
+    #[brw(magic = b"RM32")]
+    RegisterMask32,
     #[brw(magic = b"DC32")]
     Descriptors32,
     #[brw(magic = b"RAM ")]

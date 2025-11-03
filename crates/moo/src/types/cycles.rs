@@ -25,88 +25,139 @@ use crate::types::{MooBusState, MooCpuDataBusWidth, MooCpuType, MooDataWidth, Mo
 use binrw::binrw;
 use std::fmt::Display;
 
+/// A [MooCycleState] represents the state of the CPU during a single clock cycle, capturing the
+/// address and data buses, memory and I/O status, bus state, and the state of various CPU pins.
+///
+/// This struct corresponds to the payload of a `CYCL` chunk in a `MOO` test file.
 #[derive(Copy, Clone, Debug, Default)]
 #[binrw]
 #[brw(little)]
 pub struct MooCycleState {
+    /// The main pin status bitfield for this cycle.
+    /// See the PIN_* constants for bit definitions.
     pub pins0: u8,
     pub address_bus: u32,
+    /// The raw segment status bits for this cycle. Only valid if the CPU architecture uses segment
+    /// status pins.
     pub segment: u8,
+    /// The memory RW status bitfield for this cycle.
     pub memory_status: u8,
+    /// The I/O RW status bitfield for this cycle.
     pub io_status: u8,
     pub pins1: u8,
+    /// The contents of the data bus during this cycle. For CPUs with an 8-bit data bus, only the
+    /// lower 8 bits are valid. For CPUs with a 16-bit data bus, the upper, lower, or both bytes
+    /// may be valid depending on the value of A0 and the BHE pin.
     pub data_bus: u16,
+    /// The raw bus state byte for this cycle. This value is decoded based on the CPU type to
+    /// determine the actual [MooBusState].
     pub bus_state: u8,
+    /// The raw T-state value for this cycle. This value is decoded to determine the actual
+    /// [MooTState].
     pub t_state: u8,
+    /// The instruction queue operation for this cycle. Only valid if a CPU architecture has a
+    /// queue status lines.
     pub queue_op: u8,
+    /// The byte read from the queue during this cycle, if the queue operation indicates a read
+    /// from the queue. Otherwise, this value is undefined.
     pub queue_byte: u8,
 }
 
 impl MooCycleState {
+    /// A constant mask for the ALE (Address Latch Enable) pin in the pins0 field.
     pub const PIN_ALE: u8 = 0b0000_0001;
+    /// A constant mask for the BHE (Bus High Enable) pin in the pins0 field.
     pub const PIN_BHE: u8 = 0b0000_0010;
+    /// A constant mask for the READY pin in the pins0 field.
     pub const PIN_READY: u8 = 0b0000_0100;
+    /// A constant mask for the LOCK pin in the pins0 field.
     pub const PIN_LOCK: u8 = 0b0000_1000;
 
+    /// A constant mask for the MRDC (Memory Read) bit in the memory_status field.
     pub const MRDC_BIT: u8 = 0b0000_0100;
+    /// A constant mask for the AMWC (Advanced Memory Write) bit in the memory_status field.
     pub const AMWC_BIT: u8 = 0b0000_0010;
+    /// A constant mask for the MWTC (Memory Write) bit in the memory_status field.
     pub const MWTC_BIT: u8 = 0b0000_0001;
 
+    /// A constant mask for the IORC (I/O Read) bit in the io_status field.
     pub const IORC_BIT: u8 = 0b0000_0100;
+    /// A constant mask for the AIOWC (Advanced I/O Write) bit in the io_status field.
     pub const AIOWC_BIT: u8 = 0b0000_0010;
+    /// A constant mask for the IOWC (I/O Write) bit in the io_status field.
     pub const IOWC_BIT: u8 = 0b0000_0001;
 
+    /// Returns true if the BHE (Bus High Enable) pin is active (low).
     #[inline]
     pub fn bhe(&self) -> bool {
         self.pins0 & MooCycleState::PIN_BHE == 0
     }
+    /// Returns true if the ALE (Address Latch Enable) pin is active (high).
+    /// On architectures that use an active-low ADS signal, ADS is translated to ALE for consistency.
     #[inline]
     pub fn ale(&self) -> bool {
         self.pins0 & MooCycleState::PIN_ALE != 0
     }
+    /// Returns the current T-state of the CPU during this cycle.
     #[inline]
     pub fn t_state(&self) -> MooTState {
         MooTState::try_from(self.t_state & 0x07).unwrap_or(MooTState::Ti)
     }
+    /// Returns true if the CPU is reading from memory during this cycle.
     #[inline]
     pub fn is_reading_mem(&self) -> bool {
         (self.memory_status & Self::MRDC_BIT) != 0
     }
+    /// Returns true if the CPU is writing to memory during this cycle.
     #[inline]
     pub fn is_writing_mem(&self) -> bool {
         (self.memory_status & Self::MWTC_BIT) != 0
     }
+    /// Returns true if the CPU is reading from I/O during this cycle.
     #[inline]
     pub fn is_reading_io(&self) -> bool {
         (self.io_status & Self::IORC_BIT) != 0
     }
+    /// Returns true if the CPU is writing to I/O during this cycle.
     #[inline]
     pub fn is_writing_io(&self) -> bool {
         (self.io_status & Self::IOWC_BIT) != 0
     }
     #[inline]
+    /// Returns true if the CPU is reading from either memory or I/O during this cycle.
     pub fn is_reading(&self) -> bool {
         self.is_reading_mem() || self.is_reading_io()
     }
+    /// Returns true if the CPU is writing to either memory or I/O during this cycle.
     #[inline]
     pub fn is_writing(&self) -> bool {
         self.is_writing_mem() || self.is_writing_io()
     }
+    /// Returns true if the CPU is performing a code fetch from memory during this cycle.
+    #[inline]
     pub fn is_code_fetch(&self, cpu_type: MooCpuType) -> bool {
         self.is_reading_mem() && (self.bus_state(cpu_type) == MooBusState::CODE)
     }
-
+    /// Returns the decoded [MooBusState] for this cycle, based on the provided [MooCpuType]
     #[inline]
     pub fn bus_state(&self, cpu_type: MooCpuType) -> MooBusState {
         cpu_type.decode_status(self.bus_state)
     }
 }
 
+/// A helper struct for implementing [Display] for [MooCycleState].
+/// This struct provides necessary context for interpreting each cycle state, providing a cpu type,
+/// cycle number and address latch value.
 pub struct MooCycleStatePrinter {
+    /// The CPU type for interpreting the cycle state as a [MooCpuType].
     pub cpu_type: MooCpuType,
+    /// The address latch value to use for this cycle. This should be set when ALE is active.
     pub address_latch: u32,
+    /// The [MooCycleState] to display.
     pub state: MooCycleState,
+    /// Whether to show the cycle number in the output.
     pub show_cycle_num: bool,
+    /// The cycle number to display if [show_cycle_num] is true.
     pub cycle_num: usize,
 }
 

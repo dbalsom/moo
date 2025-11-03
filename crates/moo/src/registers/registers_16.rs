@@ -254,7 +254,18 @@ impl MooRegisters16 {
     pub const FLAG_NT: u16          = 0b0100_0000_0000_0000; // Nested Task
     pub const FLAG_IOPL0: u16       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u16       = 0b0010_0000_0000_0000; // IO Privilege Level
-    
+
+    /// Create a [MooRegisters16] from a flag mask. This is used to generate a `RMSK` chunk.
+    pub fn from_flag_mask(mask: u16) -> Self {
+        Self {
+            reg_mask: Self::FLAGS_MASK,
+            flags: mask,
+            ..Default::default()
+        }
+    }
+
+    /// Return the linear real-mode address of `SS:SP` if both registers are present, otherwise `None`.
+    /// Calling this function for protected mode tests is undefined behavior.
     pub fn sp_linear_real(&self) -> Option<u32> {
         if self.reg_mask & Self::SP_MASK != 0 && self.reg_mask & Self::SS_MASK != 0 {
             Some(((self.ss as u32) << 4) + (self.sp as u32))
@@ -262,6 +273,9 @@ impl MooRegisters16 {
             None
         }
     }
+    
+    /// Return the linear real-mode address of `CS:IP` if both registers are present, otherwise `None`.
+    /// Calling this function for protected mode tests is undefined behavior.
     pub fn csip_linear_real(&self) -> Option<u32> {
         if self.reg_mask & Self::IP_MASK != 0 && self.reg_mask & Self::CS_MASK != 0 {
             Some(((self.cs as u32) << 4) + (self.ip as u32))

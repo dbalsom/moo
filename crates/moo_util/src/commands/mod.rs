@@ -23,4 +23,5 @@
 
 pub mod check;
 pub mod display;
+pub mod edit;
 pub mod find;

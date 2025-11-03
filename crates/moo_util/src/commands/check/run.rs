@@ -92,9 +92,9 @@ pub fn run(_global: &GlobalOptions, params: &CheckParams) -> Result<(), Error> {
                     let mut reader = Cursor::new(data);
                     match MooTestFile::read(&mut reader) {
                         Ok(mut moo) => {
-                            let metadata = match moo.metadata() {
+                            let metadata = match moo.metadata_mut() {
                                 Some(md) => {
-                                    let md_errors = check_metadata(md);
+                                    let md_errors = check_metadata(md, path, params.fix);
                                     if !md_errors.is_empty() {
                                         s.read_errors += 1;
                                         s.files_with_errors = 1;
@@ -115,7 +115,7 @@ pub fn run(_global: &GlobalOptions, params: &CheckParams) -> Result<(), Error> {
                             };
 
                             for (ti, test) in moo.tests_mut().iter_mut().enumerate() {
-                                match check_test(ti, test, &metadata, params.fix) {
+                                match check_test(ti, test, &metadata, params) {
                                     Ok(Some(detail)) => {
                                         // Record error
                                         s.errors_found += 1; // counting failing tests

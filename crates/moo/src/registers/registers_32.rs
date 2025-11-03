@@ -381,6 +381,15 @@ impl MooRegisters32 {
     pub const FLAG_IOPL0: u32       = 0b0001_0000_0000_0000; // IO Privilege Level
     pub const FLAG_IOPL1: u32       = 0b0010_0000_0000_0000; // IO Privilege Level
 
+    /// Create a [MooRegisters32] from a flag mask. This is used to generate a `RM32` chunk.
+    pub fn from_flag_mask(mask: u32) -> Self {
+        Self {
+            reg_mask: Self::EFLAGS_MASK,
+            eflags: mask,
+            ..Default::default()
+        }
+    }
+
     pub fn sp_linear_real(&self) -> Option<u32> {
         if self.reg_mask & Self::ESP_MASK != 0 && self.reg_mask & Self::SS_MASK != 0 {
             Some((self.ss << 4).wrapping_add(self.esp))

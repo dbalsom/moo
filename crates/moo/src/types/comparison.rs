@@ -22,6 +22,9 @@
 */
 use crate::types::MooRamEntry;
 
+#[allow(unused_imports)]
+use crate::prelude::MooTest;
+
 /// An enumeration of possible results when comparing two [MooTest]s.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MooComparison {

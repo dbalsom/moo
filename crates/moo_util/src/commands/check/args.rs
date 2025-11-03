@@ -33,6 +33,8 @@ pub(crate) struct CheckParams {
     pub(crate) hash: Option<String>,
     pub(crate) index: Option<usize>,
     pub(crate) fix: bool,
+    pub(crate) check_disassembly: bool,
+    pub(crate) update_disassembly: bool,
     pub(crate) compress: bool,
 }
 
@@ -44,9 +46,13 @@ pub(crate) fn check_parser() -> impl Parser<CheckParams> {
     let fix = bpaf::long("fix")
         .help("Automatically fix any detected issues where possible")
         .switch();
-    let compress = bpaf::long("compress")
-        .help("Compress the output file if --fix is specified")
+    let check_disassembly = bpaf::long("check-disassembly")
+        .help("Check the disassembly for issues")
         .switch();
+    let update_disassembly = bpaf::long("update-disassembly")
+        .help("Update the disassembly when fixing issues")
+        .switch();
+    let compress = bpaf::long("compress").help("Compress the output file(s)").switch();
 
     construct!(CheckParams {
         in_path,
@@ -54,6 +60,8 @@ pub(crate) fn check_parser() -> impl Parser<CheckParams> {
         hash,
         index,
         fix,
+        check_disassembly,
+        update_disassembly,
         compress,
     })
     .guard(
