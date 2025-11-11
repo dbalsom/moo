@@ -7,7 +7,6 @@ All fields are little-endian.
 
 ### Changes in MOO 1.1
 
-- The CPU Name field in the file-header chunk has been enlarged from 4 to 8 bytes.
 - Additional chunk types have been added:
     - RMSK
     - RG32
