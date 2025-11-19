@@ -259,6 +259,7 @@ impl MooCpuType {
             "286 " => Ok(MooCpuType::Intel80286),
             "C286" => Ok(MooCpuType::Harris80C286),
             "386E" => Ok(MooCpuType::Intel80386Ex),
+            "88  " => Ok(MooCpuType::Intel8088),
             "8088" => Ok(MooCpuType::Intel8088),
             "8086" => Ok(MooCpuType::Intel8086),
             "188 " => Ok(MooCpuType::Intel80188),

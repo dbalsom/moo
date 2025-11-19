@@ -1,3 +1,5 @@
+![moo_reading_01](..\img\cow_reading_01.png)
+
 # MOO File Format Specification, Version 1.1
 
 This document describes the structure of the **MOO** test file format used by CPU tests for the 8088, 8086, V20, V30,

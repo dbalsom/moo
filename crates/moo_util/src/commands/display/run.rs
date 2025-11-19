@@ -49,14 +49,22 @@ pub fn run(_global: &GlobalOptions, params: &DisplayParams) -> Result<(), Error>
         }
     };
 
-    if moo_in.metadata().is_none() {
-        return Err(anyhow::anyhow!(
-            "MOO file {} is missing metadata chunk",
-            params.in_path.to_string_lossy()
-        ));
+    let metadata = if moo_in.metadata().is_none() {
+        log::warn!("MOO file is missing metadata chunk, synthesizing default metadata");
+        MooFileMetadata {
+            set_version_major: 1,
+            set_version_minor: 0,
+            cpu_type: moo_in.cpu_type(),
+            opcode: 0,
+            test_ct: moo_in.test_ct() as u32,
+            file_seed: 0,
+            extension: 0,
+            ..Default::default()
+        }
     }
-
-    let metadata = moo_in.metadata().unwrap();
+    else {
+        moo_in.metadata().unwrap().clone()
+    };
 
     if let Some(test_idx) = params.index {
         let mut indent: usize = DISPLAY_INDENT;

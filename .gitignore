@@ -102,3 +102,5 @@ http-client.private.env.json
 
 # Report output
 moo_*.html
+/cpp/mootest.exe
+/cpp/mootest.exe
