@@ -1,4 +1,4 @@
-![moo_reading_01](..\img\cow_reading_01.png)
+![moo_reading_01](../img/cow_reading_01.png)
 
 # mooreader.h
 
