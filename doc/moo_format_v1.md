@@ -214,7 +214,7 @@ The `BYTS` chunk has a redundant length field to accomodate expansion.
 
 From LSB to MSB, the order of registers in the bitfield is:
 
-| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 12    |
+| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13    |
 |----|----|----|----|----|----|----|----|----|----|----|----|----|-------|
 | ax | bx | cx | dx | cs | ss | ds | es | sp | bp | si | di | ip | flags |
 
@@ -237,7 +237,7 @@ From LSB to MSB, the order of registers in the bitfield is:
 
 From LSB to MSB, the order of registers in the bitfield is:
 
-| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 12    |
+| 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13    |
 |----|----|----|----|----|----|----|----|----|----|----|----|----|-------|
 | ax | bx | cx | dx | cs | ss | ds | es | sp | bp | si | di | ip | flags |
 
@@ -260,7 +260,7 @@ From LSB to MSB, the order of registers in the bitfield is:
 
 From LSB to MSB the order of registers in the bitfield is:
 
-| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | 11 | 12 | 12 | 13 | 14 | 15  | 16     | 17  | 18  |
+| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | 11 | 12 | 13 | 14 | 15 | 16  | 17     | 18  | 19  |
 |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|----|----|----|----|----|----|-----|--------|-----|-----|
 | cr0 | cr3 | eax | ebx | ecx | edx | esi | edi | ebp | esp | cs | ds | es | fs | gs | ss | eip | eflags | dr6 | dr7 |
 
@@ -285,7 +285,7 @@ For 16-bit segment registers such as `cs`, `ds`, etc., the upper two bytes shoul
 
 From LSB to MSB the order of register masks in the bitfield is:
 
-| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | 11 | 12 | 12 | 13 | 14 | 15  | 16     | 17  | 18  |
+| 0   | 1   | 2   | 3   | 4   | 5   | 6   | 7   | 8   | 9   | 10 | 11 | 12 | 13 | 14 | 15 | 16  | 17     | 18  | 19  |
 |-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|----|----|----|----|----|----|-----|--------|-----|-----|
 | cr0 | cr3 | eax | ebx | ecx | edx | esi | edi | ebp | esp | cs | ds | es | fs | gs | ss | eip | eflags | dr6 | dr7 |
 
